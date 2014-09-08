@@ -51,7 +51,7 @@ int ld_cust    PROTO((customer_t * c, int mode));
 typedef struct
 {
     DSS_HUGE	    *okey;  /*for clustering line items*/
-    int             linenumber; /*integer, constrain to max of 7*/
+    long            linenumber; /*integer, constrain to max of 7*/
     long            custkey;
     long            partkey;
     long            suppkey;
@@ -228,14 +228,14 @@ typedef struct
    char            date[D_DATE_LEN+1];
    char            dayofweek[D_DAYWEEK_LEN+1] ;
    char            month[D_MONTH_LEN+1];
-   int             year;
-   int             yearmonthnum;
+   long            year;
+   long            yearmonthnum;
    char            yearmonth[D_YEARMONTH_LEN+1];
-   int             daynuminweek;
-   int             daynuminmonth;
-   int             daynuminyear;
-   int             monthnuminyear;
-   int             weeknuminyear;
+   long            daynuminweek;
+   long            daynuminmonth;
+   long            daynuminyear;
+   long            monthnuminyear;
+   long            weeknuminyear;
    char            sellingseason[D_SEASON_LEN + 1];
    int             slen;
    char            lastdayinweekfl[2];
