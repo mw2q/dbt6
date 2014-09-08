@@ -1,29 +1,4 @@
-/*
-* $Id: permute.c,v 1.3 2007/01/04 21:29:21 jms Exp $
-*
-* Revision History
-* ===================
-* $Log: permute.c,v $
-* Revision 1.3  2007/01/04 21:29:21  jms
-* Porting changes uncovered as part of move to VS2005. No impact on data set
-*
-* Revision 1.2  2005/01/03 20:08:59  jms
-* change line terminations
-*
-* Revision 1.1.1.1  2004/11/24 23:31:47  jms
-* re-establish external server
-*
-* Revision 1.1.1.1  2003/08/07 17:58:34  jms
-* recreation after CVS crash
-*
-* Revision 1.2  2003/08/07 17:58:34  jms
-* Convery RNG to 64bit space as preparation for new large scale RNG
-*
-* Revision 1.1.1.1  2003/04/03 18:54:21  jms
-* initial checkin
-*
-*
-*/
+/* @(#)permute.c	2.1.8.3 */
 /*
 * permute.c -- a permutation generator for the query 
 *              sequences in TPC-H and TPC-R
@@ -77,9 +52,9 @@
 #endif
 #endif
 
-DSS_HUGE NextRand(DSS_HUGE seed);
-void	permute(long *set, int cnt, long stream);
-void	permute_dist(distribution *d, long stream);
+long NextRand(long seed);
+long *permute(long *set, int cnt, long stream);
+long *permute_dist(distribution *d, long stream);
 long seed;
 char *eol[2] = {" ", "},"};
 extern seed_t Seed[];
@@ -92,47 +67,61 @@ tdef tdefs = { NULL };
 #define ITERATIONS	1000
 #define UNSET	0
 
-void	permute(long *a, int c, long s)
-{
+long *
+permute(long *a, int c, long s)
+	{
     int i;
-    static DSS_HUGE source;
+    static long source;
     static long *set, temp;
     
 	if (a != (long *)NULL)
-	{
-		for (i=0; i < c; i++)
 		{
-			RANDOM(source, (long)i, (long)(c - 1), s);
+		set = a;
+		for (i=0; i < c; i++)
+			*(a + i) = i;
+		for (i=0; i < c; i++)
+			{
+			RANDOM(source, 0L, (long)(c - 1), s);
 			temp = *(a + source);
 			*(a + source) = *(a + i) ;
 			*(a + i) = temp;
+			source = 0;
+			}
 		}
-	}
+	else
+		source += 1;
 	
-	return;
-}
+	if (source >= c)
+		source -= c;
+	
+	return(set + source);
+	}
 
-void	permute_dist(distribution *d, long stream)
-{
+long *
+permute_dist(distribution *d, long stream)
+	{
 	static distribution *dist = NULL;
 	int i;
 	
 	if (d != NULL)
-	{
-		if (d->permute == (long *)NULL)
 		{
+		if (d->permute == (long *)NULL)
+			{
 			d->permute = (long *)malloc(sizeof(long) * DIST_SIZE(d));
 			MALLOC_CHECK(d->permute);
+			for (i=0; i < DIST_SIZE(d); i++) 
+				*(d->permute + i) = i;
+			}
+		dist = d;
+		return(permute(dist->permute, DIST_SIZE(dist), stream));
 		}
-		for (i=0; i < DIST_SIZE(d); i++) 
-			*(d->permute + i) = i;
-		permute(d->permute, DIST_SIZE(d), stream);
-	}
+	
+	
+	if (dist != NULL)
+		return(permute(NULL, DIST_SIZE(dist), stream));
 	else
 		INTERNAL_ERROR("Bad call to permute_dist");	
-
-	return;
-}
+	}
 
 
 #ifdef TEST

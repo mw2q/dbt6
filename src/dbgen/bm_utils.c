@@ -1,42 +1,5 @@
+/* @(#)bm_utils.c	2.1.8.2 */
 /*
-* $Id: bm_utils.c,v 1.4 2006/04/12 18:00:55 jms Exp $
-*
-* Revision History
-* ===================
-* $Log: bm_utils.c,v $
-* Revision 1.4  2006/04/12 18:00:55  jms
-* add missing parameter to call to gen_seed
-*
-* Revision 1.3  2005/10/14 23:16:54  jms
-* fix for answer set compliance
-*
-* Revision 1.2  2005/01/03 20:08:58  jms
-* change line terminations
-*
-* Revision 1.1.1.1  2004/11/24 23:31:46  jms
-* re-establish external server
-*
-* Revision 1.3  2004/02/18 14:05:53  jms
-* porting changes for LINUX and 64 bit RNG
-*
-* Revision 1.2  2004/01/22 05:49:29  jms
-* AIX porting (AIX 5.1)
-*
-* Revision 1.1.1.1  2003/08/08 21:35:26  jms
-* recreation after CVS crash
-*
-* Revision 1.3  2003/08/08 21:35:26  jms
-* first integration of rng64 for o_custkey and l_partkey
-*
-* Revision 1.2  2003/08/07 17:58:34  jms
-* Convery RNG to 64bit space as preparation for new large scale RNG
-*
-* Revision 1.1.1.1  2003/04/03 18:54:21  jms
-* initial checkin
-*
-*
-*/
- /*
  *
  * Various routines that handle distributions, value selections and
  * seed value management for the DSS benchmark. Current functions:
@@ -56,12 +19,19 @@
  * set_state() -- initialize the RNG
  */
 
-#include "config.h"
+/*this has to be put on top...*/
+#ifdef LINUX
+/* turn on GNU extensions, incl O_DIRECT */
+/* O_LARGEFILE is defined in fcntl.h*/
+#define _GNU_SOURCE
+#endif
+
 #include "dss.h"
 #include <stdio.h>
 #include <time.h>
 #include <errno.h>
 #include <string.h>
+
 #ifdef HP
 #include <strings.h>
 #endif            /* HP */
@@ -70,16 +40,23 @@
 #ifndef _POSIX_SOURCE
 #include <malloc.h>
 #endif /* POSIX_SOURCE */
+
 #include <fcntl.h>
+
+#ifdef IBM
+#include <sys/mode.h>
+#endif /* IBM */
 #include <sys/types.h>
 #include <sys/stat.h>
 /* Lines added by Chuck McDevitt for WIN32 support */
-#ifdef WIN32
+#if	(defined(WIN32)||defined(DOS))
 #ifndef _POSIX_
 #include <io.h>
 #ifndef S_ISREG
+
 #define S_ISREG(m) ( ((m) & _S_IFMT) == _S_IFREG )
 #define S_ISFIFO(m) ( ((m) & _S_IFMT) == _S_IFIFO )
+
 #endif 
 #endif
 #ifndef stat
@@ -114,12 +91,10 @@ static char alpha_num[65] =
 #define PROTO(s) ()
 #endif
 
-#ifndef WIN32
 char     *getenv PROTO((const char *name));
-#endif
 void usage();
 long *permute_dist(distribution *d, long stream);
-extern seed_t Seed[];
+extern long Seed[];
 
 /*
  * env_config: look for a environmental variable setting and return its
@@ -155,7 +130,7 @@ yes_no(char *prompt)
 #pragma warning(default:4127)
 #endif 
         printf("%s [Y/N]: ", prompt);
-        fgets(reply, 128, stdin);
+        gets(reply);
         switch (*reply)
             {
             case 'y':
@@ -175,10 +150,10 @@ yes_no(char *prompt)
  * and using the characters in alphanum (currently includes a space
  * and comma)
  */
-void
+int
 a_rnd(int min, int max, int column, char *dest)
 {
-   DSS_HUGE      i,
+   long      i,
              len,
              char_int;
 
@@ -191,7 +166,7 @@ a_rnd(int min, int max, int column, char *dest)
       char_int >>= 6;
       }
    *(dest + len) = '\0';
-   return;
+   return (len);
 }
 
 /*
@@ -203,13 +178,13 @@ void
 e_str(distribution *d, int min, int max, int stream, char *dest)
 {
     char strtmp[MAXAGG_LEN + 1];
-    DSS_HUGE loc;
+    long loc;
     int len;
 
     a_rnd(min, max, stream, dest);
     pick_str(d, stream, strtmp);
-    len = (int)strlen(strtmp);
-    RANDOM(loc, 0, ((int)strlen(dest) - 1 - len), stream);
+    len = strlen(strtmp);
+    RANDOM(loc, 0, (strlen(dest) - 1 - len), stream);
     strncpy(dest + loc, strtmp, len);
 
     return;
@@ -225,7 +200,7 @@ int
 pick_str(distribution *s, int c, char *target)
 {
     long      i = 0;
-    DSS_HUGE      j;
+    long      j;
 
     RANDOM(j, 1, s->list[s->count - 1].weight, c);
     while (s->list[i].weight < j)
@@ -353,7 +328,7 @@ long      weight,
             continue;
             }
         target->list[count].text =
-            (char *) malloc((size_t)((int)strlen(token) + 1));
+            (char *) malloc((size_t)(strlen(token) + 1));
         MALLOC_CHECK(target->list[count].text);
         strcpy(target->list[count].text, token);
         target->max += weight;
@@ -394,29 +369,42 @@ tbl_open(int tbl, char *mode)
             env_config(PATH_TAG, PATH_DFLT), PATH_SEP, tdefs[tbl].name);
 
     retcode = stat(fullpath, &fstats);
-    if (retcode) {
-		if (errno != ENOENT) {
-			fprintf(stderr, "stat(%s) failed.\n", fullpath);
-			exit(-1);
-		} else
-			f = fopen(fullpath, mode);  // create and open the file
-	} else {
-		/* note this code asumes we are writing but tests if mode == r -jrg */
-		if (S_ISREG(fstats.st_mode) && !force && *mode != 'r' ) {
-			sprintf(prompt, "Do you want to overwrite %s ?", fullpath);
-			if (!yes_no(prompt))
-				exit(0);
-			f = fopen(fullpath, mode);
-		} else if (S_ISFIFO(fstats.st_mode))
-			{
-			retcode =
-				open(fullpath, ((*mode == 'r')?O_RDONLY:O_WRONLY)|O_CREAT, 0664);
-			f = fdopen(retcode, mode);
-			}
-		else
-			f = fopen(fullpath, mode);
-	}
+    if (retcode && (errno != ENOENT))
+        {
+        fprintf(stderr, "stat(%s) failed.\n", fullpath);
+        exit(-1);
+        }
+    if (S_ISREG(fstats.st_mode) && !force && *mode != 'r' )
+        {
+        sprintf(prompt, "Do you want to overwrite %s ?", fullpath);
+        if (!yes_no(prompt))
+            exit(0);
+        }
+
+    if (S_ISFIFO(fstats.st_mode))
+        {
+        retcode =
+            open(fullpath, ((*mode == 'r')?O_RDONLY:O_WRONLY)|O_CREAT);
+        f = fdopen(retcode, mode);
+        }
+    else{
+
+#ifdef LINUX
+      /* allow large files on Linux */
+      /*use open to first to get the in fd and apply regular fdopen*/
+
+	/*cheng: Betty mentioned about write mode problem here, added 066*/
+      retcode =
+		  open(fullpath, ((*mode == 'r')?O_RDONLY:O_WRONLY)|O_CREAT|O_LARGEFILE,0644);
+        f = fdopen(retcode, mode);
+#else
+        f = fopen(fullpath, mode);
+#endif
+
+    }
     OPEN_CHECK(f, fullpath);
+    if (header && columnar && tdefs[tbl].header != NULL)
+        tdefs[tbl].header(f);
 
     return (f);
 }
@@ -432,17 +420,17 @@ agg_str(distribution *set, long count, long col, char *dest)
 	distribution *d;
 	int i;
 
+	
 	d = set;
 	*dest = '\0';
-
-	permute_dist(d, col);
 	for (i=0; i < count; i++)
 		{
-		strcat(dest, DIST_MEMBER(set,DIST_PERMUTE(d, i)));
-		strcat(dest, " ");
-		}
-	*(dest + (int)strlen(dest) - 1) = '\0';
+		strcat(dest, DIST_MEMBER(set,*permute_dist(d, col)));
 
+		strcat(dest, " ");
+		d = (distribution *)NULL;
+		}
+	*(dest + strlen(dest) - 1) = '\0';
     return;
 }
 
@@ -536,14 +524,16 @@ mk_ascdate(void)
 {
     char **m;
     dss_time_t t;
-    DSS_HUGE i;
+    int i;
 
     m = (char**) malloc((size_t)(TOTDATE * sizeof (char *)));
     MALLOC_CHECK(m);
     for (i = 0; i < TOTDATE; i++)
         {
-        mk_time(i + 1, &t);
-        m[i] = strdup(t.alpha);
+        m[i] = (char *)malloc(DATE_LEN * sizeof(char));
+        MALLOC_CHECK(m[i]);
+        mk_time((long)(i + 1), &t);
+        strcpy(m[i], t.alpha);
         }
 
     return(m);
@@ -556,19 +546,21 @@ mk_ascdate(void)
  * seed generation routine in speed_seed.c. Note: assumes that tables are completely independent.
  * Returns the number of rows to be generated by the named step.
  */
-DSS_HUGE
-set_state(int table, long sf, long procs, long step, DSS_HUGE *extra_rows)
+long
+set_state(int table, long sf, long procs, long step, long *extra_rows)
 {
     int i;
-	DSS_HUGE rowcount, remainder, result;
+	long rowcount, remainder, result;
 	
     if (sf == 0 || step == 0)
         return(0);
 
-	rowcount = tdefs[table].base;
+	rowcount = tdefs[table].base / procs;
+	if ((sf / procs) > (int)MAX_32B_SCALE)
+		INTERNAL_ERROR("SCALE OVERFLOW. RE-RUN WITH MORE CHILDREN.");
 	rowcount *= sf;
-	*extra_rows = rowcount % procs;
-	rowcount /= procs;
+	remainder = (tdefs[table].base % procs) * sf;
+	rowcount += remainder / procs;
 	result = rowcount;
 	for (i=0; i < step - 1; i++)
 		{
@@ -581,8 +573,17 @@ set_state(int table, long sf, long procs, long step, DSS_HUGE *extra_rows)
 			if (tdefs[table].child != NONE) 
 			tdefs[tdefs[table].child].gen_seed(0,rowcount);
 		}
+	*extra_rows = remainder % procs;
 	if (step > procs)	/* moving to the end to generate updates */
-		tdefs[table].gen_seed(0, *extra_rows);
+		tdefs[table].gen_seed(*extra_rows);
 
 	return(result);
 }
+
+
+
+
+
+
+
+
