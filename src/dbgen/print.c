@@ -129,15 +129,15 @@ dbg_print(int format, FILE *target, void *data, int len, int sep)
 		dollars = cents / 100;
 		cents %= 100;
 		if (columnar)
-			fprintf(target, "%12ld.%02ld", dollars, cents);
+			fprintf(target, "%12d.%02d", dollars, cents);
 		else
-			fprintf(target, "%ld.%02ld", dollars, cents);
+			fprintf(target, "%d.%02d", dollars, cents);
 		break;
 	case DT_CHR:
 		if (columnar)
-			fprintf(target, "%c ", (char)data);
+			fprintf(target, "%c ", *(char *)data);
 		else
-			fprintf(target, "%c", (char)data);
+			fprintf(target, "%c", *(char *)data);
 		break;
 	}
 
@@ -160,7 +160,7 @@ static FILE *fp = NULL;
         fp = print_prep(CUST, 0);
 
    PR_STRT(fp);
-   PR_INT(fp, c->custkey);
+   PR_HUGE(fp, &c->custkey);
    PR_VSTR(fp, c->name, C_NAME_LEN);
    PR_VSTR(fp, c->address, 
        (columnar)?(long)(ceil(C_ADDR_LEN * V_STR_HGH)):c->alen);
