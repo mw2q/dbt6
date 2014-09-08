@@ -115,15 +115,7 @@
 #define  NATION_LEN    25
 #define  REGION_LEN    25
 #define  PHONE_LEN     15
-
-#ifdef SSBM
-#define  MAXAGG_LEN    10    /* max component length for a agg str */
-
-#else
 #define  MAXAGG_LEN    20    /* max component length for a agg str */
-
-#endif
-
 #define  P_CMNT_SD      6
 #define  PS_CMNT_SD     9
 #define  O_CMNT_SD     12
