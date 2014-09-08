@@ -51,6 +51,15 @@
 #define SET_DBASE       "database %s ;\n"
 #endif
 
+#ifdef PGSQL
+#define GEN_QUERY_PLAN  "EXPLAIN"
+#define START_TRAN      "START"
+#define END_TRAN        "COMMIT;"
+#define SET_OUTPUT      ""
+#define SET_ROWCOUNT    "LIMIT %d;\n"
+#define SET_DBASE       "CONNECT TO %s ;\n"
+#endif /* PGSQL */
+
 #ifdef 	SQLSERVER
 #define GEN_QUERY_PLAN  "set showplan on\nset noexec on\ngo\n"
 #define START_TRAN      "begin transaction\ngo\n"
