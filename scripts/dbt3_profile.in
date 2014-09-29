@@ -12,12 +12,12 @@ DIR=`dirname $0`
 export DBT3_HOME="@TOPDIR@"
 export DATABASE=@DATABASE_TO_USE@
 
-export DSS_QUERY="@TOPDIR@/queries/@DATABASE_TO_USE@"
+export DSS_QUERY="@TOPDIR@/queries"
 export DSS_PATH="${HOME}/local/data"
 export DSS_CONFIG="@TOPDIR@/src/dbgen"
 export DBT3_PERL_MODULE="@TOPDIR@/perlmodules"
 
-export DBGEN="${DSS_CONFIG}/dbgen"
+export DBGEN="${DSS_CONFIG}/dbgenssbm"
 export QGEN="${DSS_CONFIG}/qgen"
 export PARSE_QUERY="@TOPDIR@/src/parse_query"
 export POWER="@TOPDIR@/src/power"

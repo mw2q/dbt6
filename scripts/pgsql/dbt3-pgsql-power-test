@@ -7,13 +7,13 @@
 #               2003-2006 Jenny Zhang
 #               2004-2014 Mark Wong
 #               2014      2ndQuadrant, Ltd.
-
+set -x
 DIR=`dirname $0`
 . ${DIR}/../dbt3_profile || exit 1
 
 SRCDIR=${DBT3_HOME}
 
-EXPLAIN_ARG=
+ANALYZE=
 USE_OPROFILE=0
 USE_LINUXPERF=0
 NO_REFRESH=0
@@ -21,7 +21,7 @@ NO_REFRESH=0
 # process the command line parameters
 while getopts "ef:l:p:o:s:t:yYz" opt; do
 	case $opt in
-		e) EXPLAIN_ARG="-y"
+		e) ANALYZE="EXPLAIN ANALYZE"
 			;;
 		f) SCALE_FACTOR=$OPTARG
 			;;
@@ -37,8 +37,6 @@ while getopts "ef:l:p:o:s:t:yYz" opt; do
 			;;
 		s) SEED_FILE=$OPTARG
 			;;
-		t) TAG=$OPTARG
-			;;
 		y) USE_OPROFILE=1
 			;;
 		Y) USE_LINUXPERF=1
@@ -53,29 +51,20 @@ done
 RUNDIR=$OUTPUT_DIR/run
 mkdir -p $RUNDIR
 
-SCRIPTDIR=$SRCDIR/scripts
-DBSCRIPTDIR=$SRCDIR/scripts/pgsql
-
+DBSCRIPTDIR=${SRCDIR}/scripts/pgsql
 DBSTATS="${DBSCRIPTDIR}/db_stats.sh"
 
 PSQL="psql -v ON_ERROR_STOP=1 -X -p ${DBPORT} -d ${SID} -e"
 
-# Generate queries for the Power test.
-SEED=`cat $SEED_FILE`
-echo "Seed : $SEED" > $OUTPUT_DIR/readme.txt
-
 # Get the EXPLAIN plans for only the SELECT statements.
-PLANDIR=${OUTPUT_DIR}/plans
-mkdir -p ${PLANDIR} || exit 1
-i=1
-while [ ${i} -le 22 ]; do
-	# Remember the query planned is in the order determined by the seed.
-	Q=`${QGEN} -c -r ${SEED} -p 0 -s ${SCALE_FACTOR} -x ${i}`
-	N=`echo ${Q} | sed -n -r 's/.*\(#\)([[:digit:]]+)\..*/\1/p'`
-	${PSQL} << __EOF__ > ${PLANDIR}/${N}.txt
-${Q}
+PLANDIR=$OUTPUT_DIR/db/plans
+mkdir -p $PLANDIR
+
+for Q in q1_1 q1_2 q1_3 q2_1 q2_2 q2_3 q3_1 q3_2 q3_3 q3_4 q4_1 q4_2 q4_3; do
+	SQL=`cat ${DSS_QUERY}/${Q}.sql`
+	${PSQL} << __EOF__ > ${PLANDIR}/${Q}.txt
+EXPLAIN ${SQL}
 __EOF__
-	i=$(( ${i} + 1 ))
 done
 
 $DBSCRIPTDIR/dbt3-pgsql-stop-db || exit 1
@@ -97,78 +86,50 @@ if [ $USE_OPROFILE -eq 1 ]; then
 	clearoprof
 fi
 
-if [ ${USE_LINUXPERF} -eq 1 ]; then
-	perf_start ${OUTPUT_DIR}/perf &
-fi
-
-s_time_power=`date +%s`
 record_start "PERF${TAG}.POWER" || exit 1
 
-if [ ${NO_REFRESH} -eq 0 ]; then
-	# Refresh Stream 1
-	echo "`date`: Power Test : Starting Refresh Stream 1" 
-	s_time=`date +%s`
-	TASK="PERF${TAG}.POWER.RF1"
-	record_start "${TASK}" || exit 1
-	${DBSCRIPTDIR}/run_rf1.sh ${SCALE_FACTOR} ${RUNDIR} \
-			${DBPORT} > ${RESULTSDIR}/power.perf${TAG}.rf1.txt 2>&1 || exit 1
-	record_end "${TASK}" || exit 1
-	e_time=`date +%s`
-	echo "`date`: Power Test : Refresh Stream 1 completed." 
-	diff_time=$(( $e_time - $s_time ))
-fi
-
 # Execute the queries.
-i=1
-while [ ${i} -le 22 ]; do
-	Q=`${QGEN} -c -r ${SEED} -p 0 -s ${SCALE_FACTOR} ${EXPLAIN_ARG} ${i}`
-	N=`echo ${Q} | sed -n -r 's/.*\(#\)([[:digit:]]+)\..*/\1/p'`
-	TASK="PERF${TAG}.POWER.Q${N}"
-	record_start "${TASK}" || exit 1
-	${PSQL} << __EOF__ > ${RESULTSDIR}/${N}.txt
-${Q}
-__EOF__
-	record_end "${TASK}" || exit 1
-	i=$(( ${i} + 1 ))
-done
+for Q in q1_1 q1_2 q1_3 q2_1 q2_2 q2_3 q3_1 q3_2 q3_3 q3_4 q4_1 q4_2 q4_3; do
+	SQL=`cat ${DSS_QUERY}/${Q}.sql`
+	TASKNAME="PERF.POWER.${Q}"
+	QDIR="${OUTPUT_DIR}/${Q}"
+	mkdir -p ${QDIR}
 
-if [ ${NO_REFRESH} -eq 0 ]; then
-	# Refresh Stream 2
-	echo "`date`: Power Test : Starting Refresh Stream 2" 
-	s_time=`date +%s`
-	TASK="PERF${TAG}.POWER.RF2"
-	record_start "${TASK}" || exit 1
-	${DBSCRIPTDIR}/run_rf2.sh ${RUNDIR} \
-			${DBPORT} > ${RESULTSDIR}/power.perf${TAG}.rf2.txt 2>&1 || exit 1
-	record_end "${TASK}" || exit 1
-	e_time=`date +%s`
-	echo "`date`: Power Test : Refresh Stream 2 completed." 
-	diff_time=$(( $e_time - $s_time ))
-fi
+	# Start collecting system statistics.
+	${SRCDIR}/scripts/dbt3-sysstats --outdir ${QDIR} --sample 60
+
+	# Collect database statistics
+	${DBSTATS} ${QDIR} ${DBPORT}
+
+	${PSQL} << __EOF__ > ${OUTPUT_DIR}/results/${Q}.txt
+${ANALYZE}
+${SQL}
+__EOF__
+
+	# Stop collecting system statistics.
+	read SARPID < ${QDIR}/sar.pid
+	kill ${SARPID}
+	read PIDSTATPID < ${QDIR}/pidstat.pid
+	kill ${PIDSTATPID}
+	read DBSTATSPID < ${QDIR}/db_stats.pid
+	kill ${DBSTATSPID}
+done > /dev/null 2>&1
 
 record_end ""PERF${TAG}.POWER"" || exit 1
 e_time_power=`date +%s`
 echo "`date`: Power Test completed."
-diff_time=$(( $e_time_power - $s_time_power ))
-echo "Elapsed time for Power Test : $diff_time seconds"
-
-# Stop collecting system statistics.
-read SARPID < ${OUTPUT_DIR}/sar.pid
-kill ${SARPID}
-read PIDSTATPID < ${OUTPUT_DIR}/pidstat.pid
-kill ${PIDSTATPID}
-read DBSTATSPID < ${OUTPUT_DIR}/db_stats.pid
-kill ${DBSTATSPID}
+#let "diff_time=$e_time_power-$s_time_power"
+#echo "Elapsed time for Power Test : $diff_time seconds"
 
 $DBSCRIPTDIR/dbt3-pgsql-stop-db || exit 1
 
 if [ -f /proc/profile ]; then
-	profname="Power_Test_$TAG"
+	profname="Power_Test"
 	getprof
 fi
 
 if [ $USE_OPROFILE -eq 1 ]; then
-	profname="Power_Test_$TAG"
+	profname="Power_Test"
 	getoprof
 fi
 

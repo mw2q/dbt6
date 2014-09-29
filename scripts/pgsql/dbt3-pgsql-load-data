@@ -44,13 +44,10 @@ if [ ! "x${PORT}" = "x" ]; then
 fi
 PSQL="psql -X -p ${DBPORT} -d ${SID}"
 
-load_table supplier &
+load_table lineorder &
 load_table part &
-load_table partsupp &
+load_table supplier &
 load_table customer &
-load_table orders &
-load_table lineitem &
-load_table nation &
-load_table region &
+load_table date &
 
 wait

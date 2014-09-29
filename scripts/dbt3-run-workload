@@ -228,7 +228,6 @@ do
 				${POWER_PARAMETERS_ARG}\
 				${TEST_ARGS} \
 				-s ${SEED_FILE} \
-				-t ${i} \
 				${OPROFILE_FLAG} \
 				${LINUXPERF_FLAG} \
 				${NO_REFRESH_FLAG}
@@ -309,9 +308,9 @@ if [ ${RUN_POWER_TEST} -eq 1 ] || [ ${RUN_THROUGHPUT_TEST} -eq 1 ]; then
 	${FLAG_POWER_TEST} ${FLAG_THROUGHPUT_TEST} || exit 1
 fi
 
-echo "Generating a report... "
-$SRCDIR/scripts/dbt3-gen-report $OUTPUT_DIR > $OUTPUT_DIR/index.html \
-		|| exit 1
+#echo "Generating a report... "
+#$SRCDIR/scripts/dbt3-gen-report $OUTPUT_DIR > $OUTPUT_DIR/index.html \
+#		|| exit 1
 
 #
 # Stop the database at the end of the test.

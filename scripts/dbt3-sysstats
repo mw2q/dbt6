@@ -8,26 +8,9 @@
 #               2014      2ndQuadrant, Ltd.
 
 if [ $# -lt 1 ]; then
-    echo "usage: $0 --outdir <output_dir> -sample <sample_length>"
+    echo "usage: $0 --outdir <output_dir> --sample <sample_length>"
     echo "	<output_dir> will be created if it doesn't exist"
     exit 1
-fi
-
-# Check if sar is in the user's path.  If not, set to true so the script
-# doesn't complain.
-
-which sar > /dev/null 2>&1
-if [ $? -eq 0 ]; then
-	SAR=sar
-else
-	SAR=true
-fi
-
-which pidstat > /dev/null 2>&1
-if [ $? -eq 0 ]; then
-    PIDSTAT=pidstat
-else
-    PIDSTAT=true
 fi
 
 COUNTER=0
@@ -65,12 +48,6 @@ do
 	esac
 
 	case $option in
-	--db)
-		DBTYPE=$optarg
-		;;
-	--dbname)
-		DBTYPE_NAME=$optarg
-		;;
 	--outdir)
 		OUTPUT_DIR=$optarg
 		;;
@@ -88,6 +65,23 @@ fi
 if [ -z $SAMPLE_LENGTH ]; then
 	echo "use --sample"
 	exit 1
+fi
+
+# Check if sar is in the user's path.  If not, set to true so the script
+# doesn't complain.
+
+which sar > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+	SAR=sar
+else
+	SAR=true
+fi
+
+which pidstat > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+    PIDSTAT=pidstat
+else
+    PIDSTAT=true
 fi
 
 # create the output directory in case it doesn't exist

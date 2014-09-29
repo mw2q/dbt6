@@ -77,10 +77,12 @@ OUTDIR=`dirname ${INFILE}`
 make_sar_csv ${OUTDIR}/load/sar_raw.out
 
 if [ ${FLAG_POWER_TEST} -eq 1 ]; then
-	POWER=`perl ${SCRIPT_DIR}/get_power.pl -i ${INFILE} -p ${PERFNUM} -s ${SCALE_FACTOR} ${NO_REFRESH_FLAG}`
-	echo "power = ${POWER}"  | tee -a ${OUTFILE}
+#	POWER=`perl ${SCRIPT_DIR}/get_power.pl -i ${INFILE} -p ${PERFNUM} -s ${SCALE_FACTOR} ${NO_REFRESH_FLAG}`
+#	echo "power = ${POWER}"  | tee -a ${OUTFILE}
 
-	make_sar_csv ${OUTDIR}/power${PERFNUM}/sar_raw.out
+	for QDIR in `ls -d ${OUTDIR}/power${PERFNUM}/q?_?`; do
+		make_sar_csv ${QDIR}/sar_raw.out
+	done
 fi
 
 if [ ${FLAG_THROUGHPUT_TEST} -eq 1 ]; then
@@ -98,6 +100,6 @@ fi
 # -------------------------------------
 # Plot a result chart with using gnuplot
 # -------------------------------------
-$SCRIPT_DIR/dbt3-plot-results -i ${INFILE} ${NO_REFRESH_FLAG} \
-		-o `dirname ${OUTFILE}` ${PLOT_OPTS} \
-		|| >&2 echo "Failed to plot query times..."
+#$SCRIPT_DIR/dbt3-plot-results -i ${INFILE} ${NO_REFRESH_FLAG} \
+#		-o `dirname ${OUTFILE}` ${PLOT_OPTS} \
+#		|| >&2 echo "Failed to plot query times..."
