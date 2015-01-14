@@ -210,7 +210,12 @@ char *cptr,
                 case 'X':
                 case 'x':
                     if (flags & EXPLAIN)
-                        fprintf(ofp, "%s\n", GEN_QUERY_PLAN);
+                        {
+                        if (pgsql_explain2)
+                            fprintf(ofp, "%s\n", "EXPLAIN (ANALYZE, BUFFERS)");
+                        else
+                            fprintf(ofp, "%s\n", GEN_QUERY_PLAN);
+                        }
                     cptr++;
                     break;
 		case '1':

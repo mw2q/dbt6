@@ -1,0 +1,44 @@
+#!/bin/sh
+#
+# This file is released under the terms of the Artistic License.
+# Please see the file LICENSE, included in this package, for details.
+#
+# Copyright (C) 2003      Open Source Development Lab, Inc.
+#               2005-2014 Mark Wong
+#               2014      2ndQuadrant, Ltd.
+
+if [ $# -ne 1 ]; then
+        echo "Usage: $0 <scale factor>"
+        exit 1
+fi
+
+SCALE_FACTOR=$1
+
+PSQL="psql -X -v ON_ERROR_STOP=1"
+
+DATASET=`${PSQL} -A -t -c "SELECT nextval('dataset');"`
+dbgen -s ${SCALE_FACTOR} -U ${DATASET} -S ${DATASET} || exit 1
+
+echo "`date`: Stream ${DATASET} : Starting Refresh Stream 1..."
+s_time=`date +%s`
+
+${PSQL} << __EOF__
+BEGIN;
+COPY lineitem
+FROM '${DSS_PATH}/lineitem.tbl.u${DATASET}'
+USING DELIMITERS '|';
+COPY orders
+FROM '${DSS_PATH}/orders.tbl.u${DATASET}'
+USING DELIMITERS '|';
+COMMIT;
+__EOF__
+
+e_time=`date +%s`
+echo "`date`: Stream ${DATASET} : Refresh Stream 1 completed."
+diff_time=$(( $e_time - $s_time ))
+echo "Stream ${DATASET} : Elapsed time for Refresh Stream 1 : $diff_time seconds"
+
+if [ ${DATASET} -gt 0 ]; then
+	exit ${DATASET}
+fi
+exit -1

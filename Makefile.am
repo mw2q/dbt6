@@ -7,7 +7,7 @@
 
 AUTOMAKE_OPTIONS = foreign
 
-SUBDIRS = doc src
+SUBDIRS = doc scripts src
 
 EXTRA_DIST = \
              doc/Makefile \
@@ -20,7 +20,6 @@ EXTRA_DIST = \
              doc/pgsql/dbt3-user-manual-pg.sxw \
              doc/sapdb/dbt3-sizing.sxc \
              doc/sapdb/dbt3-user-manual.sxw \
-             perlmodules/Data_report.pm \
              queries/pgsql/1.sql \
              queries/pgsql/10.sql \
              queries/pgsql/11.sql \
@@ -111,11 +110,6 @@ EXTRA_DIST = \
              queries/sapdb/9.sql \
              scripts/init_seed.sh \
              scripts/vmplot.sh \
-             scripts/pgsql/analyze_stats.pl \
-             scripts/pgsql/get_power.pl \
-             scripts/pgsql/get-throughput \
-             scripts/pgsql/graph_query_time.pl \
-             scripts/mysql/analyze_stats.pl \
              scripts/mysql/get_power.pl \
              scripts/mysql/get-throughput \
              scripts/mysql/graph_query_time.pl

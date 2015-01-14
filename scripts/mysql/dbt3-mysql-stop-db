@@ -1,15 +1,12 @@
 #!/bin/bash
-
 #
 # This file is released under the terms of the Artistic License.
 # Please see the file LICENSE, included in this package, for details.
 #
 # Copyright (C) 2006      Open Source Development Labs, Inc.
-#               2006-2010 Mark Wong
+#               2006-2014 Mark Wong
+#               2014      2ndQuadrant, Ltd.
 #
-
-DIR=`dirname $0`
-. ${DIR}/mysql_profile || exit
 
 if [ "x" = "x${MYDATA}" ]; then
 	echo "ERROR: MYDATA must be set"
@@ -17,15 +14,25 @@ if [ "x" = "x${MYDATA}" ]; then
 fi
 
 HOSTNAME=`hostname`
+PIDFILE=$MYDATA/$HOSTNAME.pid
 
-if [ ! -f "${MYDATA}/mysql.pid" ]; then
-	echo "MySQL pid file '${MYDATA}/mysql.pid' does not exist."
-	echo "MySQL was not stopped, if it was running."
+mysqladmin -s ping > /dev/null 2>&1
+if [ $? -eq 1 ]; then
 	exit 0
 fi
-MYSQL_PID=`cat ${MYDATA}/mysql.pid`
-kill ${MYSQL_PID} || exit 1
-sleep 10
-echo "MySQL stopped successfully (by kill)."
 
-exit 0
+mysqladmin -u root shutdown
+count=0
+while [ 1 ]; do
+	mysqladmin -s ping > /dev/null 2>&1
+	if [ $? -ne 1 ]; then
+		if [ $count -eq 60 ]; then
+			echo "failed waiting for mysql to stop"
+			exit 1
+		fi
+		sleep 1
+		count=$(( $count + 1 ))
+		continue
+	fi
+	break
+done

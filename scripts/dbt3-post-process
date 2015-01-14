@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 #
 # This file is released under the terms of the Artistic License.
 # Please see the file LICENSE, included in this package, for details.
@@ -7,11 +7,12 @@
 #               2003-2006 Jenny Zhang
 #               2005-2014 Mark Wong
 #               2014      2ndQuadrant, Ltd.
+#
 
 make_sar_csv() {
-	FILE=$1
+	local FILE=$1
 
-	DIR=`dirname ${FILE}`
+	local DIR=`dirname ${FILE}`
 
 	${SADF} -P ALL ${FILE} > ${DIR}/sar-cpu.csv
 	${SADF} ${FILE} -- -B > ${DIR}/sar-paging.csv
@@ -21,13 +22,10 @@ make_sar_csv() {
 	${SADF} ${FILE} -- -W > ${DIR}/sar-swap.csv
 }
 
-DIR=`dirname $0`
-source ${DIR}/dbt3_profile || exit 1
-
 PLOT_OPTS=""
 FLAG_POWER_TEST=0
 FLAG_THROUGHPUT_TEST=0
-while getopts "23i:n:o:p:s:z" OPT; do
+while getopts "23i:n:o:s:z" OPT; do
 	case ${OPT} in
 	2)
 		FLAG_POWER_TEST=1
@@ -38,16 +36,14 @@ while getopts "23i:n:o:p:s:z" OPT; do
 		PLOT_OPTS="${PLOT_OPTS} -3"
 		;;
 	i)
-		INFILE=${OPTARG}
+		INDIR=$OPTARG
+		QTIME=$INDIR/q_time.csv
 		;;
 	n)
 		STREAMS=${OPTARG}
 		;;
 	o)
 		OUTFILE=${OPTARG}
-		;;
-	p)
-		PERFNUM=${OPTARG}
 		;;
 	s)
 		SCALE_FACTOR=${OPTARG}
@@ -56,15 +52,14 @@ while getopts "23i:n:o:p:s:z" OPT; do
 		NO_REFRESH_FLAG="-z"
 		PLOT_OPTS="${PLOT_OPTS} -z"
 		;;
+	\?)
+		exit 1
+		;;
 	esac
 done
 
-SCRIPT_DIR="${DBT3_HOME}/scripts";
-
-#
-# Make sure the outfile is created.
-#
-touch ${OUTFILE}
+# Try to make sure the outfile is created.
+echo "" > ${OUTFILE}
 
 which sadf > /dev/null 2>&1
 if [ $? -eq 0 ]; then
@@ -73,30 +68,29 @@ else
 	SADF=true
 fi
 
-OUTDIR=`dirname ${INFILE}`
-make_sar_csv ${OUTDIR}/load/sar_raw.out
+if [ -f "$INDIR/load/sar_raw.out" ]; then
+	make_sar_csv $INDIR/load/sar_raw.out
+fi
 
 if [ ${FLAG_POWER_TEST} -eq 1 ]; then
-	POWER=`perl ${SCRIPT_DIR}/get_power.pl -i ${INFILE} -p ${PERFNUM} -s ${SCALE_FACTOR} ${NO_REFRESH_FLAG}`
-	echo "power = ${POWER}"  | tee -a ${OUTFILE}
+	POWER=`dbt3-power-score -i $QTIME -s $SCALE_FACTOR $NO_REFRESH_FLAG`
+	echo "power = $POWER"  | tee -a $OUTFILE
 
-	make_sar_csv ${OUTDIR}/power${PERFNUM}/sar_raw.out
+	if [ -f "$INDIR/power/sar_raw.out" ]; then
+		make_sar_csv $INDIR/power/sar_raw.out
+	fi
 fi
 
 if [ ${FLAG_THROUGHPUT_TEST} -eq 1 ]; then
-	THROUGHPUT=`${SCRIPT_DIR}/get-throughput -i ${INFILE} -p ${PERFNUM} -s ${SCALE_FACTOR} -n ${STREAMS}`
-	echo "throughput = ${THROUGHPUT}" | tee -a ${OUTFILE}
+	THROUGHPUT=`dbt3-throughput-score -i $QTIME -s $SCALE_FACTOR -n $STREAMS`
+	echo "throughput = $THROUGHPUT" | tee -a $OUTFILE
 
-	make_sar_csv ${OUTDIR}/throughput${PERFNUM}/sar_raw.out
+	if [ -f "$INDIR/throughput/sar_raw.out" ]; then
+		make_sar_csv $INDIR/throughput/sar_raw.out
+	fi
 fi
 
 if [ ${FLAG_POWER_TEST} -eq 1 ] && [ ${FLAG_THROUGHPUT_TEST} -eq 1 ]; then
 	COMPOSITE=`echo "scale=2; sqrt(${POWER} * ${THROUGHPUT})" | bc -l`
 	echo "composite = ${COMPOSITE}" | tee -a ${OUTFILE}
 fi
-
-# -------------------------------------
-# Plot a result chart with using gnuplot
-# -------------------------------------
-$SCRIPT_DIR/dbt3-plot-results -i ${INFILE} ${NO_REFRESH_FLAG} \
-		-o `dirname ${OUTFILE}` ${PLOT_OPTS} || exit 1

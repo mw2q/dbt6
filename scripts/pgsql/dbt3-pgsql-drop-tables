@@ -8,36 +8,21 @@
 #               2014      2ndQuadrant, Ltd.
 #
 
-DIR=`dirname $0`
-. ${DIR}/pgsql_profile || exit 1
-
-DBNAME=$SID
-
-if [ "x${DBNAME}" = "x" ]; then
-    echo "DBNAME not defined."
-    exit 1
+if [ "x${PGDATABASE}" = "x" ]; then
+	echo "PGDATABASE not defined."
+	exit 1
 fi
 
-while getopts "d:l:" OPT; do
-	case ${OPT} in
-	l)
-		PORT=${OPTARG}
-		;;
-	esac
-done
-
-if [ ! "x${PORT}" = "x" ]; then
-	PORTARG="-p ${PORT}"
-fi
-PSQL="psql -X ${PORTARG} -d ${DBNAME}"
+PSQL="psql -X -v ON_ERROR_STOP=1"
 
 # need to consider table dependencies.
-${PSQL} -c "DROP TABLE IF EXISTS supplier;"
-${PSQL} -c "DROP TABLE IF EXISTS part;"
-${PSQL} -c "DROP TABLE IF EXISTS partsupp;"
-${PSQL} -c "DROP TABLE IF EXISTS customer;"
-${PSQL} -c "DROP TABLE IF EXISTS orders;"
-${PSQL} -c "DROP TABLE IF EXISTS lineitem;"
-${PSQL} -c "DROP TABLE IF EXISTS nation;"
-${PSQL} -c "DROP TABLE IF EXISTS region;"
+${PSQL} -c "DROP TABLE IF EXISTS supplier CASCADE;"
+${PSQL} -c "DROP TABLE IF EXISTS part CASCADE;"
+${PSQL} -c "DROP TABLE IF EXISTS partsupp CASCADE;"
+${PSQL} -c "DROP TABLE IF EXISTS customer CASCADE;"
+${PSQL} -c "DROP TABLE IF EXISTS orders CASCADE;"
+${PSQL} -c "DROP TABLE IF EXISTS lineitem CASCADE;"
+${PSQL} -c "DROP TABLE IF EXISTS nation CASCADE;"
+${PSQL} -c "DROP TABLE IF EXISTS region CASCADE;"
 ${PSQL} -c "DROP TABLE IF EXISTS time_statistics;"
+${PSQL} -c "DROP SEQUENCE IF EXISTS dataset;"

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 #
 # This file is released under the terms of the Artistic License.  Please see
 # the file LICENSE, included in this package, for details.
@@ -8,14 +8,11 @@
 #               2014      2ndQuadrant, Ltd.
 #
 
-DIR=`dirname $0`
-. ${DIR}/pgsql_profile
-
 cmd_clear=0
 cmd_start=0
 cmd_end=0
 
-while getopts "cel:n:s" opt; do
+while getopts "cen:s" opt; do
 	case $opt in
 	c)
 		cmd_clear=1
@@ -23,32 +20,32 @@ while getopts "cel:n:s" opt; do
 	e)
 		cmd_end=1
 		;;
-	l)
-		DBPORT=${OPTARG}
-		;;
 	n)
 		NAME=$OPTARG
 		;;
 	s)
 		cmd_start=1
 		;;
+	\?)
+		exit 1
+		;;
 	esac
 done
 
-PSQL="psql -X -q -p ${DBPORT} -d $SID"
+PSQL="psql -v ON_ERROR_STOP=1 -X -q"
 
 if [ $cmd_clear == 1 ]; then
     SQL="DELETE FROM time_statistics"
 fi;
 
 if [ $cmd_start == 1 ]; then
-    s_time=`$GTIME`
-    SQL="INSERT INTO time_statistics (task_name, s_time, int_time) 
-         VALUES ('$NAME', current_timestamp, $s_time)"
+    SQL="INSERT INTO time_statistics (task_name, s_time) 
+         VALUES ('$NAME', CURRENT_TIMESTAMP)"
 fi;
 
 if [ $cmd_end == 1 ]; then
-    SQL="UPDATE time_statistics SET e_time = current_timestamp WHERE task_name = '$NAME'"
+    SQL="UPDATE time_statistics SET e_time = CURRENT_TIMESTAMP WHERE task_name = '$NAME'"
 fi;
 
 $PSQL -c "$SQL"
+exit $?
