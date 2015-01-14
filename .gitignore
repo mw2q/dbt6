@@ -27,5 +27,5 @@ scripts/pgsql/throughput_stream_wrapper.sh
 src/Makefile
 src/dbgen/.deps/
 src/dbgen/Makefile
-src/dbgen/dbgen
+src/dbgen/dbgenssbm
 src/dbgen/qgen

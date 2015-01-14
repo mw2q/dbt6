@@ -55,18 +55,10 @@ done
 
 mkdir -p ${DSS_PATH} || exit 1
 
-# Check to see if we have the files. If we don't have them - create them. 
-have_all_files=0
-for f in customer lineitem nation orders partsupp part region supplier; do
-    if ! test -f $DSS_PATH/$f.tbl ; then
-        have_all_files=1
-    fi
-done
-
-if [ $GENERATE -ne 0 -o $have_all_files -eq 1 ]; then
+if [ $GENERATE -ne 0 ]; then
 	echo "`date` Generating data for scale factor $SF..."
 	# DBGEN reads DSS_PATH env var to determine where to put the files
-	${DBGEN} -s $SF || exit 1
+	${DBGEN} -fF -s $SF || exit 1
 	chmod a+r ${DSS_PATH}/*.tbl
 else
 	echo "Creating the database using existing data files."
@@ -118,11 +110,25 @@ echo "Elapsed time for Load Test : $diff_time seconds"
 
 # Stop collecting system statistics.
 read SARPID < ${OUTPUT_DIR}/sar.pid
-kill ${SARPID}
+kill ${SARPID} > /dev/null 2>&1
 read PIDSTATPID < ${OUTPUT_DIR}/pidstat.pid
 kill ${PIDSTATPID}
 read DBSTATPID < ${OUTPUT_DIR}/dbstat.pid
 kill ${DBSTATPID}
+
+psql -X -p ${DBPORT} -d ${SID} -o ${OUTPUT_DIR}/db-size.txt << __EOF__
+SELECT pg_database_size('${SID}');
+__EOF__
+
+psql -X -p ${DBPORT} -d ${SID} -o ${OUTPUT_DIR}/table-size.txt << __EOF__
+SELECT tablename, pg_relation_size(tablename::text) AS relation_size,
+       pg_table_size(tablename::text) AS table_size,
+       pg_indexes_size(tablename::text) AS index_size
+FROM pg_tables
+WHERE schemaname = 'public'
+  AND tablename <> 'time_statistics'
+ORDER BY tablename;
+__EOF__
 
 # Collect profile data.
 if [ -f /proc/profile ]; then

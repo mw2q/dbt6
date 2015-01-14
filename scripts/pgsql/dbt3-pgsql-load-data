@@ -200,13 +200,10 @@ done
 
 PSQL="psql -v ON_ERROR_STOP=1 -X"
 
-supplier &
-part &
-partsupp &
-customer &
-orders &
-lineitem &
-nation &
-region &
+load_table lineorder &
+load_table part &
+load_table supplier &
+load_table customer &
+load_table date &
 
 wait

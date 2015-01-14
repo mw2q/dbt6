@@ -1,11 +1,12 @@
 AM_CFLAGS = -Wno-unused-variable -Wno-unused-but-set-variable -Wno-parentheses \
 			-Wno-unused-result
 
-bin_PROGRAMS = dbgen qgen
+bin_PROGRAMS = dbgenssbm qgen
 
-dbgen_SOURCES = build.c driver.c bm_utils.c rnd.c print.c load_stub.c bcd2.c \
-		speed_seed.c text.c permute.c
+dbgenssbm_SOURCES = build.c driver.c bm_utils.c rnd.c print.c load_stub.c \
+		bcd2.c speed_seed.c text.c permute.c
 qgen_SOURCES = build.c bm_utils.c qgen.c rnd.c varsub.c text.c bcd2.c \
 		permute.c speed_seed.c
 
-EXTRA_DIST = README HISTORY PORTING.NOTES BUGS dss.ddl dss.ri dists.dss makefile.suite 
+EXTRA_DIST = README HISTORY PORTING.NOTES BUGS dss.ddl dss.ri dists.dss \
+		makefile.suite
