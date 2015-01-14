@@ -49,6 +49,7 @@ long rndm;
 double flt_scale;
 distribution q13a, q13b;
 int qnum;
+int pgsql_explain2 = 0;
 
 
 /*
@@ -352,6 +353,10 @@ process_options(int cnt, char **args)
                 break;
             case 'x':   /* set explain in the queries */
                 flags |= EXPLAIN;
+                break;
+            case 'y':   /* set explain analyze in the queries, dirty hack */
+                flags |= EXPLAIN;
+                pgsql_explain2 = 1;
                 break;
             default:
                 printf("unknown option '%s' ignored\n", args[optind]);
