@@ -1,0 +1,11 @@
+export DSS_QUERY="/home/mark/src/dbt6/queries/mysql"
+export DSS_PATH="/home/mark/local/dbt6/dss"
+export DSS_CONFIG="/home/mark/src/dbt6/src/dbgen"
+
+export DBGEN="${DSS_CONFIG}/dbgen"
+export QGEN="${DSS_CONFIG}/qgen"
+
+export DBT6_DIR=/tmp/dbt6
+
+export DBNAME=dbt6
+export MYDATA=$DBT6_DIR/mydata

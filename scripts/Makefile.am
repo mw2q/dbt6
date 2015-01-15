@@ -8,19 +8,19 @@
 
 AUTOMAKE_OPTIONS = foreign
 
-SUBDIRS = mysql pgsql sapdb
+SUBDIRS = mysql pgsql
 
-bin_SCRIPTS = dbt3-compare-results \
-		dbt3-composite-score \
-		dbt3-gen-report \
-		dbt3-get-config \
-		dbt3-plot-results \
-		dbt3-post-process \
-		dbt3-power-score \
-		dbt3-power-test \
-		dbt3-run-workload \
-		dbt3-sysstats \
-		dbt3-throughput-score \
-		dbt3-throughput-stream \
-		dbt3-throughput-stream-wrapper \
-		dbt3-throughput-test
+bin_SCRIPTS = dbt6-compare-results \
+		dbt6-composite-score \
+		dbt6-gen-report \
+		dbt6-get-config \
+		dbt6-plot-results \
+		dbt6-post-process \
+		dbt6-power-score \
+		dbt6-power-test \
+		dbt6-run-workload \
+		dbt6-sysstats \
+		dbt6-throughput-score \
+		dbt6-throughput-stream \
+		dbt6-throughput-stream-wrapper \
+		dbt6-throughput-test

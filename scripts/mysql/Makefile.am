@@ -8,17 +8,17 @@
 
 AUTOMAKE_OPTIONS = foreign
 
-bin_SCRIPTS = dbt3-mysql-create-db \
-		dbt3-mysql-create-tables \
-		dbt3-mysql-dbstat \
-		dbt3-mysql-drop-db \
-		dbt3-mysql-drop-tables \
-		dbt3-mysql-get-query-time \
-		dbt3-mysql-get-version \
-		dbt3-mysql-load-data \
-		dbt3-mysql-load-test \
-		dbt3-mysql-rf1 \
-		dbt3-mysql-rf2 \
-		dbt3-mysql-start-db \
-		dbt3-mysql-stop-db \
-		dbt3-mysql-time-statistics
+bin_SCRIPTS = dbt6-mysql-create-db \
+		dbt6-mysql-create-tables \
+		dbt6-mysql-dbstat \
+		dbt6-mysql-drop-db \
+		dbt6-mysql-drop-tables \
+		dbt6-mysql-get-query-time \
+		dbt6-mysql-get-version \
+		dbt6-mysql-load-data \
+		dbt6-mysql-load-test \
+		dbt6-mysql-rf1 \
+		dbt6-mysql-rf2 \
+		dbt6-mysql-start-db \
+		dbt6-mysql-stop-db \
+		dbt6-mysql-time-statistics

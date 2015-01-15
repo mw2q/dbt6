@@ -1,0 +1,306 @@
+#!/bin/sh
+#
+# This file is released under the terms of the Artistic License.
+# Please see the file LICENSE, included in this package, for details.
+#
+# Copyright (C) 2004-2006 Open Source Development Labs, Inc.
+#               2004-2006 Jenny Zhang
+#               2004-2014 Mark Wong
+#               2014      2ndQuadrant, Ltd.
+
+trap 'echo "Test was interrupted by Control-C."; \
+killall sar sadc pidstat dbt6-$DATABASE-dbstat' INT
+trap 'echo "Test was interrupted. Got TERM signal."; \
+killall sar sadc pidstat dbt6-$DATABASE-dbstat' TERM
+
+usage()
+{
+	echo "usage: `basename $0` [-123aeghoPRuz] [-c comment] [-f scale factor] "
+	echo "  [-l database port] [-n streams] [-s seed]"
+	echo "  [-p load test database parameters]"
+	echo "  [-q power test database parameters]"
+	echo "  [-r throughput test database parameters]"
+	echo "options:"
+	echo " 1 - run load test"
+	echo " 2 - run power test"
+	echo " 3 - run throughput test"
+	echo " a - dbms under test (mysql, pgsql)"
+	echo " c - comment about the test"
+	echo " e - EXPLAIN ANALYZE (PostgreSQL only)"
+	echo " g - generate flat files"
+	echo " h - this help message"
+	echo " l - database port"
+	echo " n - number of throughput streams"
+	echo " o - output directory"
+	echo " O - enable oprofile (Linux only)"
+	echo " P - enable linux perf (Linux only)"
+	echo " p - database parameters for the load test (PostgreSQL only)"
+	echo " q - database parameters for the power test (PostgreSQL only)"
+	echo " R - materialized view mode"
+	echo " r - database parameters for the throughput test (PostgreSQL only)"
+	echo " s - seed"
+	echo " u - use tablespaces"
+	echo " z - do not run refresh streams"
+}
+
+DATABASE=""
+COMMENT=""
+FLAG_POWER_TEST=""
+FLAG_THROUGHPUT_TEST=""
+GENERATE=0
+RUN_ALL_TESTS=1
+RUN_LOAD_TEST=0
+RUN_POWER_TEST=0
+RUN_THROUGHPUT_TEST=0
+NO_REFRESH=0
+OUTPUT_DIR=""
+SCALE_FACTOR=1
+SEED=0
+STREAMS=1
+TEST_ARGS=""
+WORKLOAD="H"
+
+if [ -n "$DEFAULT_LOAD_PARAMETERS" ]; then
+	LOAD_PARAMETERS="$DEFAULT_LOAD_PARAMETERS"
+fi
+if [ -n "$DEFAULT_POWER_PARAMETERS" ]; then
+	POWER_PARAMETERS="$DEFAULT_POWER_PARAMETERS"
+fi
+if [ -n "$DEFAULT_THROUGHPUT_PARAMETERS" ]; then
+	THROUGHPUT_PARAMETERS="$DEFAULT_THROUGHPUT_PARAMETERS"
+fi
+
+while getopts "123a:c:ef:ghn:Oo:p:Pq:Rr:s:tuVz" opt; do
+	case $opt in
+	1)
+		RUN_LOAD_TEST=1
+		RUN_ALL_TESTS=0
+		;;
+	2)
+		RUN_POWER_TEST=1
+		FLAG_POWER_TEST="-2"
+		RUN_ALL_TESTS=0
+		;;
+	3)
+		RUN_THROUGHPUT_TEST=1
+		FLAG_THROUGHPUT_TEST="-3"
+		RUN_ALL_TESTS=0
+		;;
+	a)
+		DATABASE=${OPTARG}
+		export DATABASE=${DATABASE}
+		;;
+	c)
+		COMMENT=${OPTARG}
+		;;
+	e)
+		# PostgreSQL only.
+		TEST_ARGS="$TEST_ARGS -e"
+		;;
+	f)
+		SCALE_FACTOR=$OPTARG
+		;;
+	g)
+		GENERATE=1
+		;;
+	h)
+		usage
+		exit 1
+		;;
+	n)
+		STREAMS=$OPTARG
+		;;
+	O)
+		OPROFILE_FLAG="-y"
+		;;
+	o)
+		OUTPUT_DIR="${OPTARG}"
+		mkdir -p $OUTPUT_DIR
+		;;
+	P)
+		LINUXPERF_FLAG="-Y"
+		;;
+	p)
+		# PostgreSQL only.
+		LOAD_PARAMETERS="$LOAD_PARAMETERS $OPTARG"
+		;;
+	q)
+		# PostgreSQL only.
+		POWER_PARAMETERS="$POWER_PARAMETERS $OPTARG"
+		;;
+	R)
+		WORKLOAD="R"
+		WORKLOAD_ARG="-R"
+		;;
+	r)
+		# PostgreSQL only.
+		THROUGHPUT_PARAMETERS="$THROUGHPUT_PARAMETERS $OPTARG"
+		;;
+	s)
+		SEED=$OPTARG
+		;;
+	u)
+		TABLESPACES_FLAG="-t"
+		;;
+	V)
+		VERT_FLAG="-V"
+		;;
+	z)
+		NO_REFRESH_FLAG="-z"
+		NO_REFRESH=1
+		;;
+	\?)
+		usage
+		exit 1
+		;;
+	esac
+done
+
+if [ "x${DSS_PATH}" = "x" ]; then
+	>&2 echo "Error: DSS_PATH environment variable not set"
+	exit 1
+fi
+
+if [ "x${OUTPUT_DIR}" = "x" ]; then
+	>&2 echo "Error: use -o to set output directory"
+	exit 1
+fi
+
+if [ -n "$LOAD_PARAMETERS" ]; then
+	LOAD_PARAMETERS_ARG="-p \"$LOAD_PARAMETERS\""
+fi
+if [ -n "$POWER_PARAMETERS" ]; then
+	POWER_PARAMETERS_ARG="-p \"$POWER_PARAMETERS\""
+fi
+if [ -n "$THROUGHPUT_PARAMETERS" ]; then
+	THROUGHPUT_PARAMETERS_ARG="-p \"$THROUGHPUT_PARAMETERS\""
+fi
+
+echo "SCALE: $SCALE_FACTOR"
+
+# Reset the flags to make the logic later in the script easier.
+if [ ${RUN_ALL_TESTS} -eq 1 ]; then
+	RUN_LOAD_TEST=1
+	RUN_POWER_TEST=1
+	RUN_THROUGHPUT_TEST=1
+	FLAG_POWER_TEST="-2"
+	FLAG_THROUGHPUT_TEST="-3"
+fi
+
+if [ "x${COMMENT}" != "x" ]; then
+	echo ${COMMENT} > ${OUTPUT_DIR}/comment.txt
+fi
+
+# Set the seed file.
+SEED_FILE=$OUTPUT_DIR/seed
+if [ $SEED -eq 0 ]; then
+	# generate the initial seed according to cluse 2.1.3.3
+	# the initial seed is the time stamp of the end of the database load time
+	# expressed in the format mmddhhmms.
+	date +%-m%d%H%M%S > $SEED_FILE
+else
+	echo $SEED > $SEED_FILE
+fi
+echo "Using seed: `cat $SEED_FILE`"
+
+# Load Test
+if [ ${RUN_LOAD_TEST} -eq 1 ]; then
+	eval dbt6-${DATABASE}-load-test \
+			-o $OUTPUT_DIR/load \
+			${LOAD_PARAMETERS_ARG} \
+			${OPROFILE_FLAG} \
+			${LINUXPERF_FLAG} \
+			-f $SCALE_FACTOR \
+			-g $GENERATE \
+			${WORKLOAD_ARG} \
+			${TABLESPACES_FLAG} || exit 1
+else
+	#
+	# If the load test wasn't performed the time statistics needs to
+	# be cleared out.  Otherwise the data collection will be
+	# incomprehensible with duplicate data.
+	#
+	dbt6-${DATABASE}-start-db -o $OUTPUT_DIR
+fi
+
+if [ ${RUN_POWER_TEST} -eq 1 ] || [ ${RUN_THROUGHPUT_TEST} -eq 1 ]; then
+	# Start time of the Performance Test (Power and Throughput).
+	s_time=`date +%s`
+fi
+
+if [ ${RUN_POWER_TEST} -eq 1 ]; then
+	eval dbt6-power-test \
+			-a $DATABASE \
+			-f ${SCALE_FACTOR} \
+			-o ${OUTPUT_DIR}/power \
+			${POWER_PARAMETERS_ARG}\
+			${TEST_ARGS} \
+			-s ${SEED_FILE} \
+			${OPROFILE_FLAG} \
+			${LINUXPERF_FLAG} \
+			${NO_REFRESH_FLAG}
+	if [ $? -eq 1 ] ; then
+		echo "power test problem!"
+		exit 1
+	fi
+fi
+
+if [ ${RUN_THROUGHPUT_TEST} -eq 1 ]; then
+	eval dbt6-throughput-test \
+			-n ${STREAMS} \
+			-f ${SCALE_FACTOR} \
+			-o ${OUTPUT_DIR}/throughput \
+			${THROUGHPUT_PARAMETERS_ARG} \
+			${TEST_ARGS} \
+			-s ${SEED_FILE} \
+			${OPROFILE_FLAG} \
+			${LINUXPERF_FLAG} \
+			${NO_REFRESH_FLAG}
+	if [ $? -eq 1 ] ; then
+		echo "throughput test problem!"
+		exit 1
+	fi
+fi
+
+if [ ${RUN_POWER_TEST} -eq 1 ] || [ ${RUN_THROUGHPUT_TEST} -eq 1 ]; then
+	# End time of the Performance Test.
+	e_time=`date +%s`
+	diff_time=$(( $e_time - $s_time ))
+	echo "Elapsed time for performance test: $diff_time seconds"
+fi
+
+# Make sure the database is started, which it might be depending on what parts
+# of the workload are executed.
+dbt6-${DATABASE}-start-db -o $OUTPUT_DIR
+
+# Get system details.
+echo "Getting system configuration... "
+dbt6-get-config $SCALE_FACTOR $STREAMS "$LOAD_PARAMETERS" "$POWER_PARAMETERS" \
+"$THROUGHPUT_PARAMETERS" $OUTPUT_DIR || exit 1
+
+echo "Getting query times... "
+dbt6-$DATABASE-get-query-time > $OUTPUT_DIR/q_time.csv || exit 1
+
+# Stop the database at the end of the test.
+dbt6-${DATABASE}-stop-db
+
+# Calculate metrics.
+echo "Post processing query results... "
+if [ $RUN_POWER_TEST -eq 1 ] || [ $RUN_THROUGHPUT_TEST -eq 1 ]; then
+	dbt6-post-process \
+			-i $OUTPUT_DIR \
+			-s $SCALE_FACTOR \
+			-n $STREAMS \
+			-o $OUTPUT_DIR/metrics.txt \
+			$NO_REFRESH_FLAG \
+			$FLAG_POWER_TEST \
+			$FLAG_THROUGHPUT_TEST 2> $OUTPUT_DIR/post-process.txt || exit 1
+fi
+
+which R > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+	echo "Generating a report... "
+	dbt6-gen-report -i $OUTPUT_DIR $VERT_FLAG
+fi
+
+echo "Done!"

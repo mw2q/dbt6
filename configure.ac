@@ -1,7 +1,7 @@
 AC_PREREQ(2.59)
 
 dnl Process this file with autoconf to produce a configure script.
-AC_INIT(dbt3, 1.10_beta1, osdldbt-general@lists.sourceforge.net)
+AC_INIT(dbt6, 1.0alpha1, osdldbt-general@lists.sourceforge.net)
 AM_INIT_AUTOMAKE
 
 dnl Checks for programs.
@@ -42,10 +42,6 @@ AC_ARG_WITH(mysql,
 	[AC_HELP_STRING([--with-mysql=DIR], [])],
 	[MYSQL_PATH=$withval DATABASE_TO_USE="mysql" DATABASE_DEF="MYSQL=1"],
 	[])
-
-AC_ARG_WITH(sapdb,
-	[  --with-sapdb],
-	[DATABASE_TO_USE="sapdb" DATABASE_DEF="SABDB=1"], [])
 
 AC_DEFINE(DBNAME, "dss")
 AC_DEFINE(SSBM)
@@ -112,25 +108,6 @@ if test "$DATABASE_TO_USE" = "mysql"; then
   AC_DEFINE(MYSQL, 1)
 elif test "$DATABASE_TO_USE" = "pgsql"; then
   AC_DEFINE(PGSQL, 1)
-elif test "$DATABASE_TO_USE" = "sapdb"; then
-  AC_DEFINE(SAPDB, 1)
-
-  AC_CONFIG_FILES([scripts/sapdb/build_db.sh],
-      [chmod +x scripts/sapdb/build_db.sh])
-  AC_CONFIG_FILES([scripts/sapdb/create_db.sh],
-      [chmod +x scripts/sapdb/create_db.sh])
-  AC_CONFIG_FILES([scripts/sapdb/create_indexes.sh],
-      [chmod +x scripts/sapdb/create_indexes.sh])
-  AC_CONFIG_FILES([scripts/sapdb/create_tables.sh],
-      [chmod +x scripts/sapdb/create_tables.sh])
-  AC_CONFIG_FILES([scripts/sapdb/drop_tables.sh],
-      [chmod +x scripts/sapdb/drop_tables.sh])
-  AC_CONFIG_FILES([scripts/sapdb/load_db.sh],
-      [chmod +x scripts/sapdb/load_db.sh])
-  AC_CONFIG_FILES([scripts/sapdb/sapdb_profile],
-      [chmod +x scripts/sapdb/sapdb_profile])
-  AC_CONFIG_FILES([scripts/sapdb/update_statistics.sh],
-      [chmod +x scripts/sapdb/update_statistics.sh])
 fi
 
 AC_CONFIG_FILES([Makefile])
@@ -138,7 +115,6 @@ AC_CONFIG_FILES([doc/Makefile])
 AC_CONFIG_FILES([scripts/Makefile])
 AC_CONFIG_FILES([scripts/mysql/Makefile])
 AC_CONFIG_FILES([scripts/pgsql/Makefile])
-AC_CONFIG_FILES([scripts/sapdb/Makefile])
 AC_CONFIG_FILES([src/Makefile])
 AC_CONFIG_FILES([src/dbgen/Makefile])
 

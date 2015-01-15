@@ -11,15 +11,13 @@ SUBDIRS = doc scripts src
 
 EXTRA_DIST = \
              doc/Makefile \
-             doc/dbt3-architecture.sxw \
-             doc/dbt3-implement.sxw \
-             doc/dbt3-tpch.sxw \
-             doc/dbt3-user.tex \
-             doc/dbt3-user.pdf \
-             doc/pgsql/dbt3-sizing-pg.sxc \
-             doc/pgsql/dbt3-user-manual-pg.sxw \
-             doc/sapdb/dbt3-sizing.sxc \
-             doc/sapdb/dbt3-user-manual.sxw \
+             doc/dbt6-architecture.sxw \
+             doc/dbt6-implement.sxw \
+             doc/dbt6-tpch.sxw \
+             doc/dbt6-user.tex \
+             doc/dbt6-user.pdf \
+             doc/pgsql/dbt6-sizing-pg.sxc \
+             doc/pgsql/dbt6-user-manual-pg.sxw \
              queries/pgsql/1.sql \
              queries/pgsql/10.sql \
              queries/pgsql/11.sql \
@@ -82,32 +80,6 @@ EXTRA_DIST = \
              queries/mysql/ddl/nitro/nation.sql \
              queries/mysql/ddl/nitro/supplier.sql \
              queries/mysql/ddl/nitro/lineitem.sql \
-             queries/sapdb/1.sql \
-             queries/sapdb/10.sql \
-             queries/sapdb/11.sql \
-             queries/sapdb/12.sql \
-             queries/sapdb/13.sql \
-             queries/sapdb/14.sql \
-             queries/sapdb/15.sql \
-             queries/sapdb/16.sql \
-             queries/sapdb/17.sql \
-             queries/sapdb/18.sql \
-             queries/sapdb/18rewrite.sql \
-             queries/sapdb/19.sql \
-             queries/sapdb/19rewrite.sql \
-             queries/sapdb/2.sql \
-             queries/sapdb/20.sql \
-             queries/sapdb/20rewrite.sql \
-             queries/sapdb/21.sql \
-             queries/sapdb/22.sql \
-             queries/sapdb/22rewrite.sql \
-             queries/sapdb/3.sql \
-             queries/sapdb/4.sql \
-             queries/sapdb/5.sql \
-             queries/sapdb/6.sql \
-             queries/sapdb/7.sql \
-             queries/sapdb/8.sql \
-             queries/sapdb/9.sql \
              scripts/init_seed.sh \
              scripts/vmplot.sh \
              scripts/mysql/get_power.pl \

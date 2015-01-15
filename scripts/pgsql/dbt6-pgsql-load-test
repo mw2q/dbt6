@@ -1,0 +1,152 @@
+#!/bin/sh
+#
+# This file is released under the terms of the Artistic License.
+# Please see the file LICENSE, included in this package, for details.
+#
+# Copyright (C) 2002-2006 Open Source Development Labs, Inc.
+#               2002-2006 Jenny Zhang
+#               2005-2014 Mark Wong
+#               2014      2ndQuadrant, Ltd.
+#
+
+GENERATE=0
+ONLY_LOAD=0
+SF=0
+USE_OPROFILE=0
+USE_LINUXPERF=0
+WORKLOAD="H"
+
+while getopts "f:g:lo:p:RtyY:" opt; do
+	case $opt in
+	f)
+		SF=$OPTARG
+		;;
+	g)
+		GENERATE=$OPTARG
+		;;
+	l)
+		ONLY_LOAD=1
+		;;
+	o)
+		OUTPUT_DIR=$OPTARG
+		mkdir -p $OUTPUT_DIR
+		;;
+	p)
+		PARAMETERS_ARG="-p \"$OPTARG\""
+		;;
+	R)
+		WORKLOAD="R"
+		WORKLOAD_ARG="-R"
+		;;
+	t)
+		TABLESPACE_FLAG="-t -b"
+		;;
+	y)
+		USE_OPROFILE=1
+		;;
+	Y)
+		USE_LINUXPERF=1
+		;;
+	\?)
+		echo "Usage: $0 [-o <dir> -p <db_param> -f <scale_factor>]"
+		exit 1
+	esac
+done
+
+mkdir -p ${DSS_PATH} || exit 1
+
+if [ $GENERATE -ne 0 ]; then
+	echo "`date` Generating data for scale factor $SF..."
+	# DBGEN reads DSS_PATH env var to determine where to put the files
+	${DBGEN} -fF -s $SF || exit 1
+	chmod a+r ${DSS_PATH}/*.tbl
+else
+	echo "Creating the database using existing data files."
+fi
+
+# Start collecting system statistics.
+dbt6-sysstats --outdir $OUTPUT_DIR --sample 60 || exit 1
+
+eval dbt6-pgsql-create-db -o $OUTPUT_DIR $PARAMETERS_ARG
+
+dbt6-pgsql-drop-tables || exit 1
+dbt6-pgsql-create-tables ${TABLESPACE_FLAG} || exit 1
+
+echo "Load Test starting at `date`"
+s_time=`date +%s`
+psql -v ON_ERROR_STOP=1 -X -q << __EOF__ > /dev/null 2>&1
+INSERT INTO time_statistics (task_name, s_time)
+VALUES ('LOAD', CURRENT_TIMESTAMP);
+__EOF__
+
+# Collect database statistics
+dbt6-pgsql-dbstat ${OUTPUT_DIR} 2> /dev/null &
+
+# Initialize profile counters.
+if [ -f /proc/profile ]; then
+	clearprof
+fi
+
+if [ ${USE_OPROFILE} -eq 1 ]; then
+	clearoprof
+fi
+
+if [ $USE_LINUXPERF -eq 1 ]; then
+	PERFDIR=$OUTPUT_DIR/perf
+	mkdir -p $PERFDIR
+	PERFCOMMAND="perf record -a -g -s -F 100 -o $PERFDIR/perf.data"
+fi
+
+eval $PERFCOMMAND dbt6-pgsql-load-data || exit 1
+
+psql -v ON_ERROR_STOP=1 -X -q << __EOF__ > /dev/null 2>&1
+UPDATE time_statistics
+SET e_time = current_timestamp
+WHERE task_name = 'LOAD';
+__EOF__
+e_time=`date +%s`
+diff_time=`expr $e_time - $s_time`
+echo "Elapsed time for Load Test : $diff_time seconds"
+
+# Stop collecting system statistics.
+read SARPID < ${OUTPUT_DIR}/sar.pid
+kill ${SARPID} > /dev/null 2>&1
+read PIDSTATPID < ${OUTPUT_DIR}/pidstat.pid
+kill ${PIDSTATPID}
+read DBSTATPID < ${OUTPUT_DIR}/dbstat.pid
+kill ${DBSTATPID}
+
+psql -X -p ${DBPORT} -d ${SID} -o ${OUTPUT_DIR}/db-size.txt << __EOF__
+SELECT pg_database_size('${SID}');
+__EOF__
+
+psql -X -p ${DBPORT} -d ${SID} -o ${OUTPUT_DIR}/table-size.txt << __EOF__
+SELECT tablename, pg_relation_size(tablename::text) AS relation_size,
+       pg_table_size(tablename::text) AS table_size,
+       pg_indexes_size(tablename::text) AS index_size
+FROM pg_tables
+WHERE schemaname = 'public'
+  AND tablename <> 'time_statistics'
+ORDER BY tablename;
+__EOF__
+
+# Collect profile data.
+if [ -f /proc/profile ]; then
+	profname='Load_Test'
+	getprof
+fi
+
+if [ $USE_OPROFILE -eq 1 ]; then
+	profname='Load_Test'
+	getoprof
+fi
+
+if [ $USE_LINUXPERF -eq 1 ]; then
+	echo "Generating Linux perf reports for load test..."
+	perf report -i $PERFDIR/perf.data -n > $PERFDIR/perf-report.txt \
+			2>> $OUTPUT_DIR/perf/report-output.txt &
+	perf annotate -l -P -i $PERFDIR/perf.data > $PERFDIR/perf-annotate.txt \
+			2>> $OUTPUT_DIR/perf/report-output.txt &
+	perf script -L -i $PERFDIR/perf.data > $PERFDIR/perf-trace.txt \
+			2>> $OUTPUT_DIR/perf/report-output.txt &
+fi

@@ -8,18 +8,18 @@
 
 AUTOMAKE_OPTIONS = foreign
 
-bin_SCRIPTS = dbt3-pgsql-create-db \
-		dbt3-pgsql-create-tables \
-		dbt3-pgsql-dbstat \
-		dbt3-pgsql-drop-db \
-		dbt3-pgsql-drop-tables \
-		dbt3-pgsql-get-query-time \
-		dbt3-pgsql-get-version \
-		dbt3-pgsql-load-data \
-		dbt3-pgsql-load-test \
-		dbt3-pgsql-plan-disaster \
-		dbt3-pgsql-rf1 \
-		dbt3-pgsql-rf2 \
-		dbt3-pgsql-start-db \
-		dbt3-pgsql-stop-db \
-		dbt3-pgsql-time-statistics
+bin_SCRIPTS = dbt6-pgsql-create-db \
+		dbt6-pgsql-create-tables \
+		dbt6-pgsql-dbstat \
+		dbt6-pgsql-drop-db \
+		dbt6-pgsql-drop-tables \
+		dbt6-pgsql-get-query-time \
+		dbt6-pgsql-get-version \
+		dbt6-pgsql-load-data \
+		dbt6-pgsql-load-test \
+		dbt6-pgsql-plan-disaster \
+		dbt6-pgsql-rf1 \
+		dbt6-pgsql-rf2 \
+		dbt6-pgsql-start-db \
+		dbt6-pgsql-stop-db \
+		dbt6-pgsql-time-statistics
