@@ -53,7 +53,7 @@ if [ ${USE_TABLESPACES} -eq 1 ]; then
 	${PSQL} -c "CREATE ${DATE_TABLESPACE} LOCATION '${TS_DATE_DIR}';"
 fi
 
-create_table lineorder "
+create_table "
 CREATE TABLE lineorder (
 	lo_orderkey INTEGER,
 	lo_linenumber INTEGER,
@@ -72,8 +72,7 @@ CREATE TABLE lineorder (
 	lo_tax REAL,
 	lo_commitdate DATE,
 	lo_shipmode CHAR(10)
-	${LINEORDER_TABLESPACE})
-"
+	${LINEORDER_TABLESPACE});" || exit 1
 
 create_table "
 CREATE TABLE part (
@@ -86,24 +85,22 @@ CREATE TABLE part (
 	p_type VARCHAR(25),
 	p_size INTEGER,
 	p_container CHAR(10)
-	${PART_TABLESPACE})
-"
+	${PART_TABLESPACE});" || exit 1
 
-create_table supplier "
+create_table "
 CREATE TABLE supplier (
 	s_suppkey INTEGER,
-	s_name CHAR(25),
+	s_name CHAR(50),
 	s_address VARCHAR(25),
 	s_city CHAR(10),
 	s_nation CHAR(15),
 	s_region CHAR(12),
 	s_phone CHAR(15)
-	${SUPPLIER_TABLESPACE})
-"
+	${SUPPLIER_TABLESPACE});" || exit 1
 
 create_table "
 CREATE TABLE customer (
-	c_custkey INTEGER,
+	c_custkey BIGINT,
 	c_name VARCHAR(25),
 	c_address VARCHAR(25),
 	c_city CHAR(10),
@@ -111,10 +108,9 @@ CREATE TABLE customer (
 	c_region CHAR(12),
 	c_phone CHAR(15),
 	c_mktsegment CHAR(10)
-	${CUSTOMER_TABLESPACE})
-"
+	${CUSTOMER_TABLESPACE});" || exit 1
 
-create_table date "
+create_table "
 CREATE TABLE date (
 	d_datekey DATE,
 	d_date CHAR(18),
@@ -133,20 +129,10 @@ CREATE TABLE date (
 	d_lastdayinmonthfl BOOLEAN,
 	d_holidayfl BOOLEAN,
 	d_weekdayfl BOOLEAN
-	${DATE_TABLESPACE})
-"
+	${DATE_TABLESPACE});" || exit 1
 
 create_table "
 CREATE TABLE time_statistics (
 	task_name VARCHAR(40),
 	s_time TIMESTAMP,
 	e_time TIMESTAMP);" || exit 1
-
-${PSQL} << __EOF__
-GRANT SELECT,INSERT,UPDATE,DELETE ON lineorder TO PUBLIC;
-GRANT SELECT ON part TO PUBLIC;
-GRANT SELECT ON supplier TO PUBLIC;
-GRANT SELECT ON customer TO PUBLIC;
-GRANT SELECT ON date TO PUBLIC;
-GRANT SELECT,INSERT,UPDATE,DELETE ON time_statistics TO PUBLIC;
-__EOF__

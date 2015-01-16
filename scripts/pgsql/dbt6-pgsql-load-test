@@ -58,7 +58,11 @@ mkdir -p ${DSS_PATH} || exit 1
 if [ $GENERATE -ne 0 ]; then
 	echo "`date` Generating data for scale factor $SF..."
 	# DBGEN reads DSS_PATH env var to determine where to put the files
-	${DBGEN} -fF -s $SF || exit 1
+	${DBGEN} -fF -s $SF -T c || exit 1
+	${DBGEN} -fF -s $SF -T p || exit 1
+	${DBGEN} -fF -s $SF -T s || exit 1
+	${DBGEN} -fF -s $SF -T d || exit 1
+	${DBGEN} -fF -s $SF -T l || exit 1
 	chmod a+r ${DSS_PATH}/*.tbl
 else
 	echo "Creating the database using existing data files."
@@ -99,7 +103,9 @@ fi
 
 eval $PERFCOMMAND dbt6-pgsql-load-data || exit 1
 
-psql -v ON_ERROR_STOP=1 -X -q << __EOF__ > /dev/null 2>&1
+PSQL="psql -v ON_ERROR_STOP=1 -X"
+
+$PSQL -q << __EOF__ > /dev/null 2>&1
 UPDATE time_statistics
 SET e_time = current_timestamp
 WHERE task_name = 'LOAD';
@@ -116,11 +122,11 @@ kill ${PIDSTATPID}
 read DBSTATPID < ${OUTPUT_DIR}/dbstat.pid
 kill ${DBSTATPID}
 
-psql -X -p ${DBPORT} -d ${SID} -o ${OUTPUT_DIR}/db-size.txt << __EOF__
-SELECT pg_database_size('${SID}');
+$PSQL -o ${OUTPUT_DIR}/db-size.txt << __EOF__
+SELECT pg_database_size(current_database());
 __EOF__
 
-psql -X -p ${DBPORT} -d ${SID} -o ${OUTPUT_DIR}/table-size.txt << __EOF__
+$PSQL -o ${OUTPUT_DIR}/table-size.txt << __EOF__
 SELECT tablename, pg_relation_size(tablename::text) AS relation_size,
        pg_table_size(tablename::text) AS table_size,
        pg_indexes_size(tablename::text) AS index_size
