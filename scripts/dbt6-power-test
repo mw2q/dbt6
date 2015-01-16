@@ -13,6 +13,7 @@ EXPLAIN_ARG=
 USE_OPROFILE=0
 USE_LINUXPERF=0
 NO_REFRESH=0
+QUERIES="q1_1 q1_2 q1_3 q2_1 q2_2 q2_3 q3_1 q3_2 q3_3 q3_4 q4_1 q4_2 q4_3"
 
 usage()
 {
@@ -67,8 +68,10 @@ fi
 
 if [ $DATABASE = "pgsql" ]; then
 	DBCMD="psql -v ON_ERROR_STOP=1 -X -e"
+	EXPLAINCMD="EXPLAIN"
 elif [ $DATABASE = "mysql" ]; then
 	DBCMD="mysql -u root -D $DBNAME"
+	EXPLAINCMD="EXPLAIN"
 else
 	echo "Unsupported database system"
 	exit 1
@@ -83,6 +86,17 @@ fi
 
 dbt6-$DATABASE-stop-db || exit 1
 eval dbt6-$DATABASE-start-db -o $OUTPUT_DIR $PARAMETERS_ARG || exit 1
+
+# Get the execution plans.
+PLANDIR=$OUTPUT_DIR/plans
+mkdir -p $PLANDIR || exit 1
+for N in $QUERIES; do
+	Q=`cat $DSS_QUERY/$N.sql`
+    $DBCMD << __EOF__ > $PLANDIR/$N.txt
+$EXPLAINCMD
+$Q
+__EOF__
+done
 
 # Start collecting system statistics.
 dbt6-sysstats --outdir $OUTPUT_DIR --sample 60 || exit 1
@@ -104,17 +118,22 @@ s_time_power=`date +%s`
 dbt6-$DATABASE-time-statistics -s -n PERF.POWER || exit 1
 
 # Execute the queries.
-for N in q1_1 q1_2 q1_3 q2_1 q2_2 q2_3 q3_1 q3_2 q3_3 q3_4 q4_1 q4_2 q4_3; do
+if [ $EXPLAIN -eq 1 ]; then
+	# This is currently a PostgreSQL special case.
+	EXPLAINCMD2="EXPLAIN (ANALYZE, BUFFERS)"
+fi
+for N in $QUERIES; do
 	Q=`cat $DSS_QUERY/$N.sql`
 	if [ $USE_LINUXPERF -eq 1 ]; then
 		PERFDIR=$OUTPUT_DIR/perf/$N
 		mkdir -p $PERFDIR
-		PERFCOMMAND="perf record -a -g -s -F 100 -o $PERFDIR/q$N-perf.data"
+		PERFCOMMAND="perf record -a -g -s -F 100 -o $PERFDIR/$N-perf.data"
 	fi
-	TASK="PERF.POWER.Q$N"
+	TASK="PERF.POWER.$N"
 	dbt6-$DATABASE-time-statistics -s -n $TASK || exit 1
 	eval $PERFCOMMAND $DBCMD << __EOF__ \
 			> $RESULTSDIR/$N.txt 2>> $OUTPUT_DIR/power.txt
+$EXPLAINCMD2
 $Q
 __EOF__
 	dbt6-$DATABASE-time-statistics -e -n $TASK || exit 1
@@ -148,10 +167,9 @@ fi
 
 if [ $USE_LINUXPERF -eq 1 ]; then
 	echo "Generating Linux perf reports for power test..."
-	i=1
-	while [ $i -le 22 ]; do
-		PERFDIR=$OUTPUT_DIR/perf/$i
-		PERFPREFIX=q$i
+	for N in $QUERIES; do
+		PERFDIR=$OUTPUT_DIR/perf/$N
+		PERFPREFIX=$N
 		(perf report -i $PERFDIR/$PERFPREFIX-perf.data -n \
 				> $PERFDIR/$PERFPREFIX-perf-report.txt && \
 				$GZIP $PERFDIR/$PERFPREFIX-perf-report.txt) &
@@ -161,7 +179,6 @@ if [ $USE_LINUXPERF -eq 1 ]; then
 		(perf script -L -i $PERFDIR/$PERFPREFIX-perf.data \
 				> $PERFDIR/$PERFPREFIX-perf-trace.txt \
 				&& $GZIP $PERFDIR/$PERFPREFIX-perf-trace.txt) &
-		i=$(( $i + 1 ))
 	done > $OUTPUT_DIR/perf/report-output.txt 2>&1
 	wait
 fi
@@ -169,10 +186,8 @@ fi
 if [ $EXPLAIN -eq 1 ]; then
 	# Generate plan disaster report only if EXPLAIN ANALYZE is used.
 	DISASTERCSV=$OUTPUT_DIR/disaster.csv
-	i=1
-	while [ $i -le 22 ]; do
-		dbt6-$DATABASE-plan-disaster $RESULTSDIR/$i.txt >> $DISASTERCSV
-		i=$(( $i + 1 ))
+	for N in $QUERIES; do
+		dbt6-$DATABASE-plan-disaster $RESULTSDIR/$N.txt >> $DISASTERCSV
 	done
 	sort -n -t "," -k 2 -r -o $DISASTERCSV $DISASTERCSV
 fi

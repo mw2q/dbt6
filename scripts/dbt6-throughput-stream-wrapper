@@ -50,7 +50,7 @@ do
 			${EXPLAIN_ARG} \
 			${LINUXPERF_ARG} \
 			-o ${OUTPUT_DIR} \
-			-s ${SEED_FILE} > ${RUNDIR}/thruput_qs${i} 2>&1 &
+			-s ${SEED_FILE} > ${RUNDIR}/thruput_qs${i}.txt 2>&1 &
 	
 	i=$(( $i + 1 ))
 done

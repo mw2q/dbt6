@@ -15,6 +15,7 @@ USE_LINUXPERF=0
 TEST_ARGS=
 NO_REFRESH=0
 NO_REFRESH_FLAG=
+QUERIES="q1_1 q1_2 q1_3 q2_1 q2_2 q2_3 q3_1 q3_2 q3_3 q3_4 q4_1 q4_2 q4_3"
 
 while getopts "a:ef:n:o:p:s:yYz" opt; do
 	case $opt in
@@ -135,7 +136,7 @@ if [ $USE_LINUXPERF -eq 1 ]; then
 	i=1
 	while [ $i -le $num_stream ]; do
 		j=1
-		while [ $j -le 22 ]; do
+		for N in $QUERIES; do
 			PERFDIR=$OUTPUT_DIR/results/$i/perf/$j
 			PERFPREFIX=q$j
 			(perf report -i $PERFDIR/$PERFPREFIX-perf.data -n \

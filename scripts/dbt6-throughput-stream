@@ -11,6 +11,7 @@
 
 EXPLAIN=0
 USE_LINUXPERF=0
+QUERIES="q1_1 q1_2 q1_3 q2_1 q2_2 q2_3 q3_1 q3_2 q3_3 q3_4 q4_1 q4_2 q4_3"
 
 while getopts "a:f:n:o:s:t:yY" opt; do
 	case $opt in
@@ -38,8 +39,10 @@ fi
 
 if [ $DATABASE = "pgsql" ]; then
 	DBCMD="psql -v ON_ERROR_STOP=1 -X -e"
+	EXPLAINCMD="EXPLAIN"
 elif [ $DATABASE = "mysql" ]; then
 	DBCMD="mysql -u root -D $DBNAME"
+	EXPLAINCMD="EXPLAIN"
 else
 	echo "Unsupported database system"
 	exit 1
@@ -52,30 +55,39 @@ mkdir -p ${RESULTSDIR} || exit 1
 # output PID to a tmp file
 echo "$$" > $RUNDIR/PID$stream_num
 
-if [ ! -f $SEED_FILE ]; then
-	echo "creating seed file $SEED_FILE, you can change the seed by "
-	echo "modifying this file"
-	$SRCDIR/scripts/init_seed.sh > $SEED_FILE
-fi
-read SEED < $SEED_FILE
-SEED=$(( ${SEED} + ${stream_num} ))
+# get the execution plan for each query of each query stream
+PLANDIR=$OUTPUT_DIR/plans/$stream_num
+mkdir -p $PLANDIR || exit 1
+
+for N in $QUERIES; do
+	Q=`cat $DSS_QUERY/$N.sql`
+	$DBCMD << __EOF__ > $PLANDIR/$N.txt
+$EXPLAINCMD
+$Q
+__EOF__
+done
 
 # run the queries
+if [ $EXPLAIN -eq 1 ]; then
+	# This is currently a PostgreSQL special case.
+	EXPLAINCMD2="EXPLAIN (ANALYZE, BUFFERS)"
+fi
+
 echo "`date`: start throughput queriy stream $stream_num "
 s_time=`date +%s`
 STREAMTASK="PERF.THRUPUT.QS${stream_num}.ALL"
 dbt6-$DATABASE-time-statistics -s -n $STREAMTASK || exit 1
-i=1
-for N in q1_1 q1_2 q1_3 q2_1 q2_2 q2_3 q3_1 q3_2 q3_3 q3_4 q4_1 q4_2 q4_3; do
+for N in $QUERIES; do
 	Q=`cat $DSS_QUERY/$N.sql`
 	if [ $USE_LINUXPERF -eq 1 ]; then
 		PERFDIR=$RESULTSDIR/perf/$N
 		mkdir -p $PERFDIR
-		PERFCOMMAND="perf record -a -g -s -F 100 -o $PERFDIR/q$N-perf.data"
+		PERFCOMMAND="perf record -a -g -s -F 100 -o $PERFDIR/$N-perf.data"
 	fi
-	TASK="PERF.THRUPUT.QS${stream_num}.Q${N}"
+	TASK="PERF.THRUPUT.QS$stream_num.$N"
 	dbt6-$DATABASE-time-statistics -s -n $TASK || exit 1
 	eval $PERFCOMMAND $DBCMD << __EOF__ > $RESULTSDIR/$N.txt
+$EXPLAINCMD2
 $Q
 __EOF__
 	dbt6-$DATABASE-time-statistics -e -n $TASK || exit 1
@@ -85,10 +97,8 @@ dbt6-$DATABASE-time-statistics -e -n $STREAMTASK || exit 1
 if [ $EXPLAIN -eq 1 ]; then
 	# Generate plan disaster report only if EXPLAIN ANALYZE is used.
 	DISASTERCSV=$RESULTSDIR/disaster.csv
-	i=1
-	while [ $i -le 22 ]; do
-		dbt6-$DATABASE-plan-disaster $RESULTSDIR/$i.txt >> $DISASTERCSV
-		i=$(( $i + 1 ))
+	for N in $QUERIES; do
+		dbt6-$DATABASE-plan-disaster $RESULTSDIR/$N.txt >> $DISASTERCSV
 	done
 	sort -n -t "," -k 2 -r -o $DISASTERCSV $DISASTERCSV
 fi
