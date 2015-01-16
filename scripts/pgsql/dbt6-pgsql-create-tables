@@ -62,7 +62,7 @@ CREATE TABLE lineorder (
 	lo_suppkey INTEGER,
 	lo_orderdate DATE,
 	lo_orderpriority CHAR(15),
-	lo_shippriority INTEGER,
+	lo_shippriority CHAR(1),
 	lo_quantity REAL,
 	lo_extendedprice REAL,
 	lo_ordtotalprice REAL,
@@ -90,7 +90,7 @@ CREATE TABLE part (
 create_table "
 CREATE TABLE supplier (
 	s_suppkey INTEGER,
-	s_name CHAR(50),
+	s_name CHAR(25),
 	s_address VARCHAR(25),
 	s_city CHAR(10),
 	s_nation CHAR(15),
@@ -114,7 +114,7 @@ create_table "
 CREATE TABLE date (
 	d_datekey DATE,
 	d_date CHAR(18),
-	d_dayofweek CHAR(9),
+	d_dayofweek CHAR(9), -- Spec says 8 but Wednesday is clearly 9 :)
 	d_month CHAR(9),
 	d_year INTEGER,
 	d_yearmonthnum INTEGER,
