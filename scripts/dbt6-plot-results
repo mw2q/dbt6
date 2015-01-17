@@ -66,14 +66,14 @@ labels <- NULL
 cnames <- NULL
 power <- NULL
 thruput <- NULL
+queries <- c("q1_1", "q1_2", "q1_3", "q2_1", "q2_2", "q2_3", "q3_1",
+             "q3_2", "q3_3", "q3_4", "q4_1", "q4_2", "q4_3")
 
 df\$q <- NA
 
 df_plot <- df[0, ]
 
-for (i in 1:22) {
-  cnames <- c(cnames, paste("Q", i, sep=""))
-}
+cnames <- queries
 cnames <- c(cnames, "RF1")
 cnames <- c(cnames, "RF2")
 
@@ -82,13 +82,13 @@ if (${POWER_TEST} == 1) {
   count <- count + 1
   labels <- c(labels, "Power")
 
-  for (i in 1:22) {
-    str <- paste("PERF.POWER.Q", i, sep="")
+  for (i in queries) {
+    str <- paste("PERF.POWER.", i, sep="")
     df[df\$task_name == str, ]\$q = i
     df_power <- rbind(df_power, df[df\$task_name == str, ])
   }
-  df[df\$task_name == "PERF.POWER.RF1", ]\$q = 23
-  df[df\$task_name == "PERF.POWER.RF2", ]\$q = 24
+  df[df\$task_name == "PERF.POWER.RF1", ]\$q = 14
+  df[df\$task_name == "PERF.POWER.RF2", ]\$q = 15
   df_power <- rbind(df_power, df[df\$task_name == "PERF.POWER.RF1", ])
   df_power <- rbind(df_power, df[df\$task_name == "PERF.POWER.RF2", ])
 
@@ -106,10 +106,10 @@ if (${THROUGHPUT_TEST} == 1) {
   count <- count + 1
 
   df_thruput <- df[0, ]
-  for (i in 1:22) {
-    str <- paste("*.THRUPUT.QS.*.Q", i, "\$", sep="")
+  for (i in queries) {
+    str <- paste("*.THRUPUT.QS.*.", i, "\$", sep="")
     sub <- df[grep(str, df\$task_name), ]
-    newrow <- data.frame(task_name=paste("THRUPUT.Q", i, sep=""), s_time=0,
+    newrow <- data.frame(task_name=paste("THRUPUT.", i, sep=""), s_time=0,
                          e_time=0, diff_time=0, seconds=mean(sub\$seconds), q=i)
     df_thruput <- rbind(df_thruput, newrow)
   }
@@ -118,14 +118,14 @@ if (${THROUGHPUT_TEST} == 1) {
     sub <- df[grep(str, df\$task_name), ]
     newrow <- data.frame(task_name=paste("THRUPUT.RF", i, sep=""), s_time=0,
                          e_time=0, diff_time=0, seconds=mean(sub\$seconds),
-                         q=(i + 22))
+                         q=(i + 13))
     df_thruput <- rbind(df_thruput, newrow)
   }
   df_plot <- rbind(df_plot, df_thruput)
-  thruput <- sum(df_thruput\$seconds) / (runs * 22)
+  thruput <- sum(df_thruput\$seconds) / (runs * 13)
 }
 
-data <- matrix(df_plot\$seconds, ncol=24, byrow=T)
+data <- matrix(df_plot\$seconds, ncol=15, byrow=T)
 colnames(data) <- cnames
 rownames(data) <- labels
 

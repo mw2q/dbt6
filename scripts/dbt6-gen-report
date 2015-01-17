@@ -7,6 +7,8 @@
 #               2014      2ndQuadrant, Ltd.
 #
 
+QUERIES="q1_1 q1_2 q1_3 q2_1 q2_2 q2_3 q3_1 q3_2 q3_3 q3_4 q4_1 q4_2 q4_3"
+
 write_perf_page()
 {
 	local FILE=$1
@@ -22,7 +24,7 @@ write_perf_page()
 <h2>$DESC Query</h2>
 <ol>
 __EOF__
-	for i in `seq 1 22`; do
+	for i in $QUERIES; do
 		cat << __EOF__ >> $FILE
   <li>
     <a href="$i/q$i-perf-report.txt.gz">report</a> |
@@ -107,22 +109,19 @@ __EOF__
 <h3>Query Plans</h3>
 __EOF__
 		i=1
-		while [ $i -le 22 ]; do
+		for i in $QUERIES; do
 			cat << __EOF__ >> $SUBHTMLFILE
-<a href="plans/$i.txt">Q$i</a>
+<a href="plans/$i.txt">$i</a>
 __EOF__
-			i=$(( $i + 1 ))
 		done
 
 		cat << __EOF__ >> $SUBHTMLFILE
 <h3>Query Results</h3>
 __EOF__
-		i=1
-		while [ $i -le 22 ]; do
+		for i in $QUERIES; do
 			cat << __EOF__ >> $SUBHTMLFILE
-<a href="results/$i.txt">Q$i</a>
+<a href="results/$i.txt">$i</a>
 __EOF__
-			i=$(( $i + 1 ))
 		done
 		if [ -f "$OUTDIR/results/rf1.txt" ]; then
 			cat << __EOF__ >> $SUBHTMLFILE
@@ -150,12 +149,10 @@ __EOF__
 <li>
 __EOF__
 
-			i=1
-			while [ $i -le 22 ]; do
+			for i in $QUERIES; do
 				cat << __EOF__ >> $SUBHTMLFILE
-<a href="plans/$Q/$i.txt">Q$i</a>
+<a href="plans/$Q/$i.txt">$i</a>
 __EOF__
-				i=$(( $i + 1 ))
 			done
 
 			cat << __EOF__ >> $SUBHTMLFILE
@@ -176,12 +173,10 @@ __EOF__
 <li>
 __EOF__
 
-			i=1
-			while [ $i -le 22 ]; do
+			for i in $QUERIES; do
 				cat << __EOF__ >> $SUBHTMLFILE
-<a href="results/$S/$i.txt">Q$i</a>
+<a href="results/$S/$i.txt">$i</a>
 __EOF__
-				i=$(( $i + 1 ))
 			done
 			if [ -f "$OUTDIR/results/$S/rf1.txt" ]; then
 				cat << __EOF__ >> $SUBHTMLFILE
