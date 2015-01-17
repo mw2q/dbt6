@@ -136,3 +136,10 @@ CREATE TABLE time_statistics (
 	task_name VARCHAR(40),
 	s_time TIMESTAMP,
 	e_time TIMESTAMP);" || exit 1
+
+$PSQL << __EOF__
+CREATE SEQUENCE dataset
+MINVALUE 1
+START WITH 1;
+SELECT nextval('dataset');
+__EOF__

@@ -43,5 +43,5 @@ if [ -z ${THROUGHPUT} ]; then
 	exit 1
 fi
 
-THROUGHPUT=`echo "scale=2; 22 * 3600 * ${STREAMS} * ${SCALE_FACTOR} / ${THROUGHPUT}" | bc -l`
+THROUGHPUT=`echo "scale=2; 15 * 3600 * ${STREAMS} * ${SCALE_FACTOR} / ${THROUGHPUT}" | bc -l`
 echo ${THROUGHPUT}

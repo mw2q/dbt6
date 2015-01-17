@@ -58,12 +58,13 @@ mkdir -p ${DSS_PATH} || exit 1
 if [ $GENERATE -ne 0 ]; then
 	echo "`date` Generating data for scale factor $SF..."
 	# DBGEN reads DSS_PATH env var to determine where to put the files
-	${DBGEN} -fF -s $SF -T c || exit 1
-	${DBGEN} -fF -s $SF -T p || exit 1
-	${DBGEN} -fF -s $SF -T s || exit 1
-	${DBGEN} -fF -s $SF -T d || exit 1
-	${DBGEN} -fF -s $SF -T l || exit 1
-	chmod a+r ${DSS_PATH}/*.tbl
+	# There is a bug such that DBGEN needs to be run per table.
+	$DBGEN -fF -s $SF -T c || exit 1
+	$DBGEN -fF -s $SF -T p || exit 1
+	$DBGEN -fF -s $SF -T s || exit 1
+	$DBGEN -fF -s $SF -T d || exit 1
+	$DBGEN -fF -s $SF -T l || exit 1
+	chmod a+r $DSS_PATH/*.tbl
 else
 	echo "Creating the database using existing data files."
 fi

@@ -21,19 +21,17 @@ calculate the power metrics
 
 =head1 ARGUMENTS
 
- -perf_run_number <perf_run_number>
  -scale_factor <scale factor >
- -file <config filename to read from> 
- -write <config filename to write to> 
+ -file <config filename to read from>
+ -write <config filename to write to>
  -z
 
 =cut
 
-my ($perf_run_number, $hlp, $infile, $scale_factor, $configfile,
+my ($hlp, $infile, $scale_factor, $configfile,
   $power, @power_query, @power_refresh, $i, $no_refresh);
 
 GetOptions(
-  "perf_run_number=i" => \$perf_run_number,
   "scale_factor=f" => \$scale_factor,
   "help"      => \$hlp,
   "infile=s"  => \$infile,
@@ -50,8 +48,10 @@ my $value = 1;
 #
 # Get execution time for the power queries.
 #
-for ($i = 1; $i <= 22; $i++) {
-    my $tag = "PERF".$perf_run_number.".POWER.Q".$i;
+my @queries = qw( q1_1 q1_2 q1_3 q2_1 q2_2 q2_3 q3_1 q3_2 q3_3 q3_4
+                  q4_1 q4_2 q4_3 );
+foreach (@queries) {
+    my $tag = "PERF.POWER." . $_;
 
     open(IN, "$infile") || die($!);
     while(<IN>)
@@ -74,14 +74,14 @@ for ($i = 1; $i <= 22; $i++) {
 #
 unless ($no_refresh) {
     for ($i = 1; $i <= 2; $i++) {
-	my $tag = "PERF".$perf_run_number.".POWER.RF".$i;
+	my $tag = "PERF.POWER.RF".$i;
 
 	open(IN, "$infile") || die($!);
 	while(<IN>)
 	{
 	    chomp;
 	    my @v = split(/,/, $_);
-	    
+
 	    if ( $v[0] eq $tag )
 	    {
 		#
@@ -99,7 +99,7 @@ unless ($no_refresh) {
     }
 }
 
-$power = (3600 * $scale_factor) / ($value)**(1/24);
+$power = (3600 * $scale_factor) / ($value)**(1/15);
 print "$power\n";
 
 exit 0;

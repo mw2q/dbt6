@@ -21,20 +21,17 @@ PSQL="psql -v ON_ERROR_STOP=1 -X"
 echo "`date`: Stream ${set_num} : Starting Refresh Stream 2..."
 s_time=`date +%s`
 
-${PSQL} << __EOF__
+$PSQL << __EOF__
 BEGIN;
-CREATE TEMPORARY TABLE tmp_orderkey$set_num (orderkey numeric(10));
-COPY tmp_orderkey$set_num
-FROM '${DSS_PATH}/delete.$set_num' USING DELIMITERS '|';
+CREATE TEMPORARY TABLE tmp_lineorder$set_num (orderkey integer);
+COPY tmp_lineorder$set_num
+FROM '$DSS_PATH/delete.$set_num' USING DELIMITERS '|';
 CREATE INDEX
-ON tmp_orderkey$set_num (orderkey);
-ANALYZE tmp_orderkey$set_num;
-DELETE FROM lineitem
-USING tmp_orderkey$set_num
-WHERE l_orderkey = orderkey;
-DELETE FROM orders
-USING tmp_orderkey$set_num
-WHERE o_orderkey = orderkey;
+ON tmp_lineorder$set_num (orderkey);
+ANALYZE tmp_lineorder$set_num;
+DELETE FROM lineorder
+USING tmp_lineorder$set_num
+WHERE lo_orderkey = orderkey;
 COMMIT;
 __EOF__
 

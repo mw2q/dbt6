@@ -7,6 +7,7 @@
 #               2003-2006 Jenny Zhang
 #               2004-2014 Mark Wong
 #               2014      2ndQuadrant, Ltd.
+#
 
 EXPLAIN=0
 EXPLAIN_ARG=
@@ -117,6 +118,23 @@ fi
 s_time_power=`date +%s`
 dbt6-$DATABASE-time-statistics -s -n PERF.POWER || exit 1
 
+# Refresh Stream 1
+TASK="PERF.POWER.RF1"
+dbt6-$DATABASE-time-statistics -s -n $TASK || exit 1
+if [ $NO_REFRESH -eq 0 ]; then
+	echo "`date`: Power Test : Starting Refresh Stream 1"
+	s_time=`date +%s`
+	dbt6-$DATABASE-rf1 $SCALE_FACTOR > $RESULTSDIR/rf1.txt 2>&1
+	DATASET=$?
+	if [ $DATASET -lt 1 ]; then
+		exit 1
+	fi
+	e_time=`date +%s`
+	echo "`date`: Power Test : Refresh Stream 1 completed."
+	diff_time=$(( $e_time - $s_time ))
+fi
+dbt6-$DATABASE-time-statistics -e -n $TASK || exit 1
+
 # Execute the queries.
 if [ $EXPLAIN -eq 1 ]; then
 	# This is currently a PostgreSQL special case.
@@ -138,6 +156,20 @@ $Q
 __EOF__
 	dbt6-$DATABASE-time-statistics -e -n $TASK || exit 1
 done
+
+# Refresh Stream 2
+TASK="PERF.POWER.RF2"
+dbt6-$DATABASE-time-statistics -s -n $TASK || exit 1
+if [ $NO_REFRESH -eq 0 ]; then
+	# Refresh Stream 2
+	echo "`date`: Power Test : Starting Refresh Stream 2"
+	s_time=`date +%s`
+	dbt6-$DATABASE-rf2 $DATASET > $RESULTSDIR/rf2.txt 2>&1 || exit 1
+	e_time=`date +%s`
+	echo "`date`: Power Test : Refresh Stream 2 completed."
+	diff_time=$(( $e_time - $s_time ))
+fi
+dbt6-$DATABASE-time-statistics -e -n $TASK || exit 1
 
 dbt6-$DATABASE-time-statistics -e -n PERF.POWER || exit 1
 e_time_power=`date +%s`

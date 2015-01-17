@@ -6,6 +6,7 @@
 # Copyright (C) 2003      Open Source Development Lab, Inc.
 #               2005-2014 Mark Wong
 #               2014      2ndQuadrant, Ltd.
+#
 
 if [ $# -ne 1 ]; then
         echo "Usage: $0 <scale factor>"
@@ -17,18 +18,15 @@ SCALE_FACTOR=$1
 PSQL="psql -X -v ON_ERROR_STOP=1"
 
 DATASET=`${PSQL} -A -t -c "SELECT nextval('dataset');"`
-dbgen -s ${SCALE_FACTOR} -U ${DATASET} -S ${DATASET} || exit 1
+dbgenssbm -s $SCALE_FACTOR -U $DATASET -S $DATASET
 
 echo "`date`: Stream ${DATASET} : Starting Refresh Stream 1..."
 s_time=`date +%s`
 
 ${PSQL} << __EOF__
 BEGIN;
-COPY lineitem
-FROM '${DSS_PATH}/lineitem.tbl.u${DATASET}'
-USING DELIMITERS '|';
-COPY orders
-FROM '${DSS_PATH}/orders.tbl.u${DATASET}'
+COPY lineorder
+FROM '$DSS_PATH/lineorder.tbl.u${DATASET}'
 USING DELIMITERS '|';
 COMMIT;
 __EOF__
