@@ -160,7 +160,7 @@ static FILE *fp = NULL;
         fp = print_prep(CUST, 0);
 
    PR_STRT(fp);
-   PR_HUGE(fp, &c->custkey);
+   PR_INT(fp, c->custkey);
    PR_VSTR(fp, c->name, C_NAME_LEN);
    PR_VSTR(fp, c->address, 
        (columnar)?(long)(ceil(C_ADDR_LEN * V_STR_HGH)):c->alen);
